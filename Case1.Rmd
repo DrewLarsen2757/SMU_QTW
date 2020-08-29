@@ -9,12 +9,14 @@ output: word_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+Import Libraries
 ```{r}
 library(tidyverse)
 library(magrittr)
 
 ```
 
+Read in offline data and Parse data into a data frame called 'offline'
 ```{r}
 # Read in the raw "offline" text file
 txt = readLines('http://www.rdatasciencecases.org/Data/offline.final.trace.txt')
@@ -37,18 +39,16 @@ tmp = lapply(lines, processLine)
 # Convert the offline data to a data frame
 offline = as.data.frame(do.call("rbind", tmp),stringsAsFactors = FALSE)
 
-head(offline)
-
-```
-
-```{r}
 # Assign column names to the offline data frame
 names(offline) = c("time", "scanMac", "posX", "posY", "posZ",
                    "orientation", "mac", "signal",
                    "channel", "type")
 
 head(offline)
+
 ```
+
+
 
 ```{r}
 # Observe one observation from the offline data frame
@@ -63,4 +63,54 @@ select(offline,-c(scanMac,channel,type))
 ```{r}
 # See if any observations have a posZ-value not equal to 0.0
 offline[offline['posZ']!='0.0',]
+```
+
+```{r}
+# Get a full list of mac values and their types (we are interested in type == 3)
+macTypeDF <- unique(select(offline, c(mac,type)))
+macTypeDF[order(macTypeDF$type),]
+```
+
+```{r}
+# List the unique mac values
+vals = data.frame(table(offline['mac']))
+vals[order(-vals$Freq),]
+
+# Add the type to the an updated data frame
+valsUpdated <- vals %>% inner_join(macTypeDF, by = c("Var1" = "mac"))
+valsUpdated <- valsUpdated[order(valsUpdated$type, -valsUpdated$Freq),]
+
+```
+
+Refine offline DF to type 3 and mac addresses with the highest frequency
+```{r}
+#Change offline signal column from chr to integar
+offline$signal %<>% as.integer
+
+# Limit offline to type 3 observations
+offline <- offline[offline$type != 1, ]
+
+#These mac addresses are type 3 and have the most observations
+keepMacs <- c('00:0f:a3:39:e1:c0',
+              '00:0f:a3:39:dd:cd',
+              '00:14:bf:b1:97:8a',
+              '00:14:bf:3b:c7:c6',
+              '00:14:bf:b1:97:90',
+              '00:14:bf:b1:97:8d',
+              '00:14:bf:b1:97:81'
+              )
+
+# Trim down offline DF to only the mac addresses that are type 3 with highest frequency.
+offline <- offline[offline$mac %in% keepMacs ,]
+```
+
+Build final offline dataframe
+```{r}
+# Pivot the data frame (or cast it; make it wider) but putting the mac values and their associated signals in the columns
+offlineOut<-select(offline, -c(channel,scanMac,type)) %>% pivot_wider(names_from = mac,values_from = signal, values_fn = list(signal=mean))
+
+offlineOut$nas<-rowSums(is.na(offlineOut))
+
+# View the final data frame
+offlineOut
 ```
