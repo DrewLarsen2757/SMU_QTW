@@ -16,6 +16,7 @@ library(magrittr)
 
 ```
 
+# Offline Data prep
 Read in offline data and Parse data into a data frame called 'offline'
 ```{r}
 # Read in the raw "offline" text file
@@ -112,5 +113,68 @@ offlineOut<-select(offline, -c(channel,scanMac,type)) %>% pivot_wider(names_from
 offlineOut$nas<-rowSums(is.na(offlineOut))
 
 # View the final data frame
-offlineOut
+head(offlineOut)
 ```
+
+# Online Data prep
+read in Online data from website
+```{r}
+# Process the online data
+onlineTxt = readLines("http://www.rdatasciencecases.org/Data/online.final.trace.txt")
+
+onlineLines = onlineTxt[ substr(onlineTxt, 1, 1) != "#" ]
+onlineTmp = lapply(onlineLines, processLine)
+
+# Convert the online data to a data frame
+online = as.data.frame(do.call("rbind", onlineTmp),stringsAsFactors = FALSE)
+
+head(online)
+
+names(online) = c("time", "scanMac", "posX", "posY", "posZ",
+                   "orientation", "mac", "signal",
+                   "channel", "type")
+
+head(online)
+```
+
+```{r}
+# View the data frame exclusive of the scanMac, channel, and type columns
+select(online,-c(scanMac,channel,type))
+```
+
+```{r}
+# See if any observations have a posZ-value not equal to 0.0
+online[online['posZ']!='0.0',]
+
+```
+
+```{r}
+# List the unique mac values and their frequencies in the offline data frame
+onlineVals = data.frame(table(online['mac']))
+onlineVals[order(-onlineVals$Freq),]
+
+online$signal %<>% as.integer
+
+online <- online[online$mac %in% keepMacs ,]
+```
+Create final online dataframe
+```{r}
+# Pivot the data frame (or cast it; make it wider) but putting the mac values and their associated signals in the columns
+onlineOut<-select(online, -c(channel,scanMac,type)) %>% pivot_wider(names_from = mac,values_from = signal, values_fn = list(signal=mean))
+
+onlineOut$nas<-rowSums(is.na(onlineOut))
+
+# View the final data frame
+head(onlineOut)
+```
+
+Add posXY column to both offlineOut and OnlineOut dataframes
+```{r}
+offlineOut$posXY <- paste(offlineOut$posX, offlineOut$posY, sep="-")
+length(unique(offlineOut$posXY))
+
+onlineOut$posXY <- paste(onlineOut$posX, onlineOut$posY, sep="-")
+length(unique(onlineOut$posXY))
+
+```
+
