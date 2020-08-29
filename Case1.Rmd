@@ -1,0 +1,66 @@
+---
+title: "Case1"
+author: "Matt Chinchilla"
+date: "8/27/2020"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(magrittr)
+
+```
+
+```{r}
+# Read in the raw "offline" text file
+txt = readLines('http://www.rdatasciencecases.org/Data/offline.final.trace.txt')
+
+# Create a function to parse the data
+processLine = function(x)
+{
+  tokens = strsplit(x, "[;=,]")[[1]]
+  if (length(tokens) == 10) {
+    return(NULL)
+  }
+  tmp = matrix(tokens[ - (1:10) ], , 4, byrow = TRUE)
+  cbind(matrix(tokens[c(2, 4, 6:8, 10)], nrow(tmp), 6,
+               byrow = TRUE), tmp)
+}
+
+lines = txt[ substr(txt, 1, 1) != "#" ]
+tmp = lapply(lines, processLine)
+
+# Convert the offline data to a data frame
+offline = as.data.frame(do.call("rbind", tmp),stringsAsFactors = FALSE)
+
+head(offline)
+
+```
+
+```{r}
+# Assign column names to the offline data frame
+names(offline) = c("time", "scanMac", "posX", "posY", "posZ",
+                   "orientation", "mac", "signal",
+                   "channel", "type")
+
+head(offline)
+```
+
+```{r}
+# Observe one observation from the offline data frame
+offline[offline$time==1139643118358,]
+```
+
+```{r}
+# View the data frame exclusive of the scanMac, channel, and type columns
+select(offline,-c(scanMac,channel,type))
+```
+
+```{r}
+# See if any observations have a posZ-value not equal to 0.0
+offline[offline['posZ']!='0.0',]
+```
