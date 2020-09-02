@@ -178,3 +178,42 @@ length(unique(onlineOut$posXY))
 
 ```
 
+Remove N/A values and remove posZ column from data frames
+```{R}
+#Remove NA's
+offlineOut <- na.omit(offlineOut)
+onlineOut <- na.omit(onlineOut)
+
+#Remove posZ column
+offlineOut <- offlineOut %>% subset(select = -c(posZ))
+onlineOut <- onlineOut %>% subset(select = -c(posZ))
+
+```
+
+
+Convert posX,posY, and orientation columns from chr to num and add angle column to OfflineOut and OnlineOut Dataframes
+```{r}
+# Convert char columns to numeric
+#Offline
+offlineOut$orientation <- as.numeric(offlineOut$orientation)
+offlineOut$posX <- as.numeric(offlineOut$posX)
+offlineOut$posY <- as.numeric(offlineOut$posY)
+
+#Online
+onlineOut$orientation <- as.numeric(onlineOut$orientation)
+onlineOut$posX <- as.numeric(onlineOut$posX)
+onlineOut$posY <- as.numeric(onlineOut$posY)
+
+# create a function that will round off to the nearest major angle
+roundOrientation = function(angles) {
+  refs = seq(0, by = 45, length  = 9)
+  q = sapply(angles, function(o) which.min(abs(o - refs)))
+  c(refs[1:8], 0)[q]
+}
+
+# we built it, now apply it
+offlineOut$angle = roundOrientation(offlineOut$orientation)
+onlineOut$angle = roundOrientation(onlineOut$orientation)
+```
+
+
