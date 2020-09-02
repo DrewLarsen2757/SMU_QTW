@@ -180,9 +180,12 @@ length(unique(onlineOut$posXY))
 
 Remove N/A values and remove posZ column from data frames
 ```{R}
+<<<<<<< HEAD
+=======
 #Remove NA's
 offlineOut <- na.omit(offlineOut)
 onlineOut <- na.omit(onlineOut)
+>>>>>>> ec5052f80c763782ff73bb4e72670a4d29d7af38
 
 #Remove posZ column
 offlineOut <- offlineOut %>% subset(select = -c(posZ))
@@ -216,4 +219,157 @@ offlineOut$angle = roundOrientation(offlineOut$orientation)
 onlineOut$angle = roundOrientation(onlineOut$orientation)
 ```
 
+<<<<<<< HEAD
+```{r}
+offline0df = offlineOut[offlineOut$angle == 0,]
+offline45df = offlineOut[offlineOut$angle == 45,]
+offline90df = offlineOut[offlineOut$angle == 90,]
+offline135df = offlineOut[offlineOut$angle == 135,]
+offline180df = offlineOut[offlineOut$angle == 180,]
+offline225df = offlineOut[offlineOut$angle == 225,]
+offline270df = offlineOut[offlineOut$angle == 270,]
+offline315df = offlineOut[offlineOut$angle == 315,]
 
+online0df = onlineOut[onlineOut$angle == 0,]
+online45df = onlineOut[onlineOut$angle == 45,]
+online90df = onlineOut[onlineOut$angle == 90,]
+online135df = onlineOut[onlineOut$angle == 135,]
+online180df = onlineOut[onlineOut$angle == 180,]
+online225df = onlineOut[onlineOut$angle == 225,]
+online270df = onlineOut[onlineOut$angle == 270,]
+online315df = onlineOut[onlineOut$angle == 315,]
+
+offlinedflist = list(offline0df,offline45df,offline90df,
+                    offline135df,offline180df,offline225df,
+                    offline270df,offline315df)
+
+onlinedflist = list(online0df,online45df,online90df,
+                    online135df,online180df,online225df,
+                    online270df,online315df)
+
+#Remove NA's
+for (i in 1:8) {
+  for (j in colnames(offline0df[5:11])) {
+    offlinedflist[[i]][[j]][is.na(offlinedflist[[i]][[j]])] <- mean(na.omit(offlinedflist[[i]][[j]]))
+    onlinedflist[[i]][[j]][is.na(onlinedflist[[i]][[j]])] <- mean(na.omit(offlinedflist[[i]][[j]]))
+  }
+}
+offline0df = data.frame(offlinedflist[1])
+offline45df = data.frame(offlinedflist[2])
+offline90df = data.frame(offlinedflist[3])
+offline135df = data.frame(offlinedflist[4])
+offline180df = data.frame(offlinedflist[5])
+offline225df = data.frame(offlinedflist[6])
+offline270df = data.frame(offlinedflist[7])
+offline315df = data.frame(offlinedflist[8])
+
+online0df = data.frame(onlinedflist[1])
+online45df = data.frame(onlinedflist[2])
+online90df = data.frame(onlinedflist[3])
+online135df = data.frame(onlinedflist[4])
+online180df = data.frame(onlinedflist[5])
+online225df = data.frame(onlinedflist[6])
+online270df = data.frame(onlinedflist[7])
+online315df = data.frame(onlinedflist[8])
+
+sum(is.na(offline0df))
+sum(is.na(offlinedflist[2]))
+
+
+
+```
+
+```{r}
+gpOffline0df <- offline0df %>% group_by(posX, posY, angle) %>%
+  summarize(
+            '00.14.bf.b1.97.8a' = mean(X00.14.bf.b1.97.8a),
+            '00.14.bf.b1.97.90' = mean(X00.14.bf.b1.97.90),
+            '00.0f.a3.39.e1.c0' = mean(X00.0f.a3.39.e1.c0),
+            '00.14.bf.b1.97.8d' = mean(X00.14.bf.b1.97.8d),
+            '00.14.bf.b1.97.81' = mean(X00.14.bf.b1.97.81),
+            '00.14.bf.3b.c7.c6' = mean(X00.14.bf.3b.c7.c6),
+            '00.0f.a3.39.dd.cd' = mean(X00.0f.a3.39.dd.cd))
+gpOffline45df <- offline45df %>% group_by(posX, posY, angle) %>%
+  summarize(
+            '00.14.bf.b1.97.8a' = mean(X00.14.bf.b1.97.8a),
+            '00.14.bf.b1.97.90' = mean(X00.14.bf.b1.97.90),
+            '00.0f.a3.39.e1.c0' = mean(X00.0f.a3.39.e1.c0),
+            '00.14.bf.b1.97.8d' = mean(X00.14.bf.b1.97.8d),
+            '00.14.bf.b1.97.81' = mean(X00.14.bf.b1.97.81),
+            '00.14.bf.3b.c7.c6' = mean(X00.14.bf.3b.c7.c6),
+            '00.0f.a3.39.dd.cd' = mean(X00.0f.a3.39.dd.cd))
+gpOffline90df <- offline90df %>% group_by(posX, posY, angle) %>%
+  summarize(
+            '00.14.bf.b1.97.8a' = mean(X00.14.bf.b1.97.8a),
+            '00.14.bf.b1.97.90' = mean(X00.14.bf.b1.97.90),
+            '00.0f.a3.39.e1.c0' = mean(X00.0f.a3.39.e1.c0),
+            '00.14.bf.b1.97.8d' = mean(X00.14.bf.b1.97.8d),
+            '00.14.bf.b1.97.81' = mean(X00.14.bf.b1.97.81),
+            '00.14.bf.3b.c7.c6' = mean(X00.14.bf.3b.c7.c6),
+            '00.0f.a3.39.dd.cd' = mean(X00.0f.a3.39.dd.cd))
+gpOffline90df <- offline90df %>% group_by(posX, posY, angle) %>%
+  summarize(
+            '00.14.bf.b1.97.8a' = mean(X00.14.bf.b1.97.8a),
+            '00.14.bf.b1.97.90' = mean(X00.14.bf.b1.97.90),
+            '00.0f.a3.39.e1.c0' = mean(X00.0f.a3.39.e1.c0),
+            '00.14.bf.b1.97.8d' = mean(X00.14.bf.b1.97.8d),
+            '00.14.bf.b1.97.81' = mean(X00.14.bf.b1.97.81),
+            '00.14.bf.3b.c7.c6' = mean(X00.14.bf.3b.c7.c6),
+            '00.0f.a3.39.dd.cd' = mean(X00.0f.a3.39.dd.cd))
+gpOffline135df <- offline135df %>% group_by(posX, posY, angle) %>%
+  summarize(
+            '00.14.bf.b1.97.8a' = mean(X00.14.bf.b1.97.8a),
+            '00.14.bf.b1.97.90' = mean(X00.14.bf.b1.97.90),
+            '00.0f.a3.39.e1.c0' = mean(X00.0f.a3.39.e1.c0),
+            '00.14.bf.b1.97.8d' = mean(X00.14.bf.b1.97.8d),
+            '00.14.bf.b1.97.81' = mean(X00.14.bf.b1.97.81),
+            '00.14.bf.3b.c7.c6' = mean(X00.14.bf.3b.c7.c6),
+            '00.0f.a3.39.dd.cd' = mean(X00.0f.a3.39.dd.cd))
+gpOffline180df <- offline180df %>% group_by(posX, posY, angle) %>%
+  summarize(
+            '00.14.bf.b1.97.8a' = mean(X00.14.bf.b1.97.8a),
+            '00.14.bf.b1.97.90' = mean(X00.14.bf.b1.97.90),
+            '00.0f.a3.39.e1.c0' = mean(X00.0f.a3.39.e1.c0),
+            '00.14.bf.b1.97.8d' = mean(X00.14.bf.b1.97.8d),
+            '00.14.bf.b1.97.81' = mean(X00.14.bf.b1.97.81),
+            '00.14.bf.3b.c7.c6' = mean(X00.14.bf.3b.c7.c6),
+            '00.0f.a3.39.dd.cd' = mean(X00.0f.a3.39.dd.cd))
+gpOffline225df <- offline45df %>% group_by(posX, posY, angle) %>%
+  summarize(
+            '00.14.bf.b1.97.8a' = mean(X00.14.bf.b1.97.8a),
+            '00.14.bf.b1.97.90' = mean(X00.14.bf.b1.97.90),
+            '00.0f.a3.39.e1.c0' = mean(X00.0f.a3.39.e1.c0),
+            '00.14.bf.b1.97.8d' = mean(X00.14.bf.b1.97.8d),
+            '00.14.bf.b1.97.81' = mean(X00.14.bf.b1.97.81),
+            '00.14.bf.3b.c7.c6' = mean(X00.14.bf.3b.c7.c6),
+            '00.0f.a3.39.dd.cd' = mean(X00.0f.a3.39.dd.cd))
+gpOffline270df <- offline45df %>% group_by(posX, posY, angle) %>%
+  summarize(
+            '00.14.bf.b1.97.8a' = mean(X00.14.bf.b1.97.8a),
+            '00.14.bf.b1.97.90' = mean(X00.14.bf.b1.97.90),
+            '00.0f.a3.39.e1.c0' = mean(X00.0f.a3.39.e1.c0),
+            '00.14.bf.b1.97.8d' = mean(X00.14.bf.b1.97.8d),
+            '00.14.bf.b1.97.81' = mean(X00.14.bf.b1.97.81),
+            '00.14.bf.3b.c7.c6' = mean(X00.14.bf.3b.c7.c6),
+            '00.0f.a3.39.dd.cd' = mean(X00.0f.a3.39.dd.cd))
+gpOffline315df <- offline45df %>% group_by(posX, posY, angle) %>%
+  summarize(
+            '00.14.bf.b1.97.8a' = mean(X00.14.bf.b1.97.8a),
+            '00.14.bf.b1.97.90' = mean(X00.14.bf.b1.97.90),
+            '00.0f.a3.39.e1.c0' = mean(X00.0f.a3.39.e1.c0),
+            '00.14.bf.b1.97.8d' = mean(X00.14.bf.b1.97.8d),
+            '00.14.bf.b1.97.81' = mean(X00.14.bf.b1.97.81),
+            '00.14.bf.3b.c7.c6' = mean(X00.14.bf.3b.c7.c6),
+            '00.0f.a3.39.dd.cd' = mean(X00.0f.a3.39.dd.cd))
+```
+
+```{r}
+gpOffline0df
+online0df
+
+
+
+```
+=======
+
+>>>>>>> ec5052f80c763782ff73bb4e72670a4d29d7af38
