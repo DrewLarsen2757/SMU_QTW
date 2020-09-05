@@ -15,6 +15,7 @@ library(tidyverse)
 library(magrittr)
 library(class)
 library(caret)
+library(FNN)
 ```
 
 
@@ -377,7 +378,6 @@ Weighted KNN exploration
 fullofflinedf = do.call("rbind",list(data.frame(gpOffline0df), data.frame(gpOffline45df), data.frame(gpOffline90df), data.frame(gpOffline135df), data.frame(gpOffline180df), data.frame(gpOffline225df), data.frame(gpOffline270df), data.frame(gpOffline315df)))
 
 fullonlinedf = do.call("rbind",list(data.frame(online0df), data.frame(online45df), data.frame(online90df), data.frame(online135df), data.frame(online180df), data.frame(online225df), data.frame(online270df), data.frame(online315df)))
-
 ```
 
 
@@ -393,9 +393,31 @@ predsdf
 ```
 
 ```{r}
-
-
-
+weight = matrix(0, nrow = 166)
+predx = matrix(0, nrow = 6592)
+predy = matrix(0, nrow = 6592)
+compofflinedf = select(fullofflinedf, c(angle, X00.14.bf.b1.97.8a, X00.14.bf.b1.97.90, X00.0f.a3.39.e1.c0, X00.14.bf.b1.97.8d, X00.14.bf.b1.97.81, X00.14.bf.3b.c7.c6, X00.0f.a3.39.dd.cd, posX, posY))
+componlinedf = select(fullonlinedf, c(angle, X00.14.bf.b1.97.8a, X00.14.bf.b1.97.90, X00.0f.a3.39.e1.c0, X00.14.bf.b1.97.8d, X00.14.bf.b1.97.81, X00.14.bf.3b.c7.c6, X00.0f.a3.39.dd.cd))
+for (j in 1:6592) {
+for (i in 1:166) {
+compangofflinedf = compofflinedf[compofflinedf$angle == componlinedf$angle[1],]
+weight[i] = 1/(sqrt(sum((componlinedf[j,2:8] - 
+                 compangofflinedf[i,2:8])^2)))
+}
+weights = sort(weight, index.return = T, decreasing = T)
+top7 = data.frame(index = weights$ix[1:7], initweight = weights$x[1:7])
+top7$weight = top7$initweight / sum(top7$initweight)
+predx[j] = sum(compangofflinedf$posX[top7$index] * top7$weight)
+predy[j] = sum(compangofflinedf$posY[top7$index] * top7$weight)
+}
 ```
 
+
+
+```{r}
+fullonlinedf$predx = predx
+fullonlinedf$predy = predy
+rmseX = mean(sqrt((fullonlinedf$posX - fullonlinedf$predx)^2))
+rmseY = mean(sqrt((fullonlinedf$posY - fullonlinedf$predy)^2))
+```
 
