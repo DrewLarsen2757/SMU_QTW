@@ -178,21 +178,8 @@ length(unique(onlineOut$posXY))
 
 ```
 
-Remove N/A values and remove posZ column from data frames
+Remove posZ column from data frames
 ```{R}
-<<<<<<< HEAD
-#Remove NA's
-offlineOut <- na.omit(offlineOut)
-onlineOut <- na.omit(onlineOut)
-=======
-#<<<<<<< HEAD
-#=======
-#Remove NA's
-#offlineOut <- na.omit(offlineOut)
-#onlineOut <- na.omit(onlineOut)
-#>>>>>>> ec5052f80c763782ff73bb4e72670a4d29d7af38
->>>>>>> origin/master
-
 #Remove posZ column
 offlineOut <- offlineOut %>% subset(select = -c(posZ))
 onlineOut <- onlineOut %>% subset(select = -c(posZ))
@@ -225,10 +212,7 @@ offlineOut$angle = roundOrientation(offlineOut$orientation)
 onlineOut$angle = roundOrientation(onlineOut$orientation)
 ```
 
-<<<<<<< HEAD
 
-=======
-<<<<<<< HEAD
 ```{r}
 offline0df = offlineOut[offlineOut$angle == 0,]
 offline45df = offlineOut[offlineOut$angle == 45,]
