@@ -13,8 +13,10 @@ Import Libraries
 ```{r}
 library(tidyverse)
 library(magrittr)
-
+library(class)
+library(caret)
 ```
+
 
 # Offline Data prep
 Read in offline data and Parse data into a data frame called 'offline'
@@ -364,12 +366,36 @@ gpOffline315df <- offline45df %>% group_by(posX, posY, angle) %>%
 ```
 
 ```{r}
-gpOffline0df
-online0df
+head(gpOffline0df)
+head(online0df)
 
 
 
 ```
-=======
+Weighted KNN exploration
+```{r}
+fullofflinedf = do.call("rbind",list(data.frame(gpOffline0df), data.frame(gpOffline45df), data.frame(gpOffline90df), data.frame(gpOffline135df), data.frame(gpOffline180df), data.frame(gpOffline225df), data.frame(gpOffline270df), data.frame(gpOffline315df)))
 
->>>>>>> ec5052f80c763782ff73bb4e72670a4d29d7af38
+fullonlinedf = do.call("rbind",list(data.frame(online0df), data.frame(online45df), data.frame(online90df), data.frame(online135df), data.frame(online180df), data.frame(online225df), data.frame(online270df), data.frame(online315df)))
+
+```
+
+
+```{r}
+fity = knnreg(posY ~ ., data = select(fullofflinedf, -c(posX)), k = 7)
+fitx = knnreg(posX ~ ., data = select(fullofflinedf, -c(posY)), k = 7)
+
+predsy = predict(fity, select(fullonlinedf, -c(posX)))
+predsx = predict(fitx, select(fullonlinedf, -c(posY)))
+
+predsdf = data.frame(cbind(XPredictions = predsx, YPredictions = predsy))
+predsdf
+```
+
+```{r}
+
+
+
+```
+
+
