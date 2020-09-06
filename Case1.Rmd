@@ -411,8 +411,12 @@ predx[j] = sum(compangofflinedf$posX[top7$index] * top7$weight)
 predy[j] = sum(compangofflinedf$posY[top7$index] * top7$weight)
 }
 ```
+Data Evaluation / Modelling Preparations (not really sure where this part goes but I think we need it in the report):
+In order to deal with NA values in the offline data set, we made the decision to impute based on the mean value of the mac address and angle with the missing value. So if mac address 00.14.bf.b1.97.90 had a missing value and the data point was taken at angle 45, we took the mean value of all the 00.14.bf.b1.97.90 values at angle 45. We did the same thing in the online data set, but used the values of the offline data set in the online data set. This is due to the online data set being a test set. We want to pretend that we know nothing about our test set in order to avoid data leakage. This includes imputing with values in our offline data set, which acts as our training set. We use the orientation in our analysis, as orientation seems to affect the value at each mac address.
 
-
+Modelling scenario: Extended Case
+After our initial analysis, it was determined that the best model included mac addresses: (mac addresses used)
+We decided to look into an alternate model using these mac addresses. Our alternative model is a weighted KNN model. This model takes the root average squared error between the values of the mac address for the position we are trying to predict and the mac address for the values of our training set. In this case, the position we are trying to predict is the online data set and the training set is the offline data. We take the _____ (k) positions with the lowest root average squared errors, since it was determined that this was the best number for k in our initial analysis. The root average squared error is used to create weights for these _____ (k) positions, where the lowest root average squared error has more impact on our predictions. We multiply these weights by their correspoinding x and y positions, sum the positions and are left with predictions for the positions of the online data. The root average squared error of this model is _____ for the x value and ____ for the y value. This performs (better / worse) than our best non-weighted KNN model. 
 
 ```{r}
 fullonlinedf$predx = predx
