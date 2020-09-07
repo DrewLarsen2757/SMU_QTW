@@ -430,6 +430,7 @@ plot(fullonlinedf$predy, fullonlinedf$posY)
 ```{r}
 write.csv(fullonlinedf, 'fullonlinedf.csv')
 write.csv(fullofflinedf, 'fullofflinedf.csv')
+write.csv()
 ```
 
 
