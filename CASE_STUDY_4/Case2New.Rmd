@@ -1,0 +1,229 @@
+---
+title: "Case2New"
+author: "Matt Chinchilla"
+date: "9/13/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Library
+```{r}
+library(XML)
+```
+
+URLS for scrapping data
+```{r}
+ubase = "http://www.cherryblossom.org/"
+
+#### From text
+F_URLs = 
+  c("results/1999/cb99f.html", 
+    "results/2000/Cb003f.htm", 
+    "results/2001/oof_f.html",
+    "results/2002/ooff.htm", 
+    "results/2003/CB03-F.HTM",
+    "results/2004/women.htm", 
+    "results/2005/CB05-F.htm", 
+    "results/2006/women.htm", 
+    "results/2007/women.htm", 
+    "results/2008/women.htm", 
+    "results/2009/09cucb-F.htm",
+    "results/2010/2010cucb10m-f.htm", 
+    "results/2011/2011cucb10m-f.htm",
+    "results/2012/2012cucb10m-f.htm")
+
+urls = paste(ubase,F_URLs, sep = "")
+
+years = 1999:2012
+```
+
+
+
+Function to parse data
+```{r}
+extractResTable3 =  
+  #Retrieve data from web site, 
+  #find the preformatted text,  
+  #and return as a character vector.  
+  function(url, year)  {  
+    
+    doc = htmlParse(url, encoding = 'UTF-8')  
+    
+    if (year == 2000) {  
+    #Get text from 4th font element 
+    #File is ill-formed so <pre> search doesn’t work.  
+    ff = getNodeSet(doc, "//font")  
+    txt = xmlValue(ff[[4]]) 
+    }  
+    
+    else if (year == 1999) { 
+      # Get preformatted text from <pre> elements
+      pres = getNodeSet(doc, "//pre")
+      txt = xmlValue(pres[[1]])
+      els = strsplit(txt, "\n")[[1]]   
+    } 
+    
+  else {  preNode = getNodeSet(doc, "//pre")  
+  txt = xmlValue(preNode[[1]]) 
+  }  
+  els = strsplit(txt, "\r\n")[[1]]  
+  return(els) 
+  } 
+
+```
+
+Run extracResTable3 function and check character lenght count. Note: 1999 does not parse correctly the code chunk below this chunk will pull the 1999 data correctly.
+```{r}
+wTables3 = mapply(extractResTable3, url = urls, year = years)
+
+names(wTables3) = 1999:2012
+sapply(wTables3, length)
+```
+
+Scrape 1999 data this will output els99  a character string with the 1999 women data you need
+```{r}
+# 1999
+url <- urls[1]
+doc = htmlParse(url, encoding="UTF-8")
+pres = getNodeSet(doc, "//pre")
+txt = xmlValue(pres[[1]])
+#els = strsplit(txt, "\r\n")[[1]]
+els99 = strsplit(txt, "\n")[[1]]
+
+```
+
+
+IGNORE for now: Trying to refine the function to parse 1999 data correctly and write to file
+```{r}
+extractResTable4 =  
+  #Retrieve data from web site, 
+  #find the preformatted text,  
+  #and return as a character vector.  
+  function(url, year)  {  
+    
+    doc = htmlParse(url)  
+    
+    if (year == 2000) {  
+    #Get text from 4th font element 
+    #File is ill-formed so <pre> search doesn’t work.  
+    ff = getNodeSet(doc, "//font")  
+    txt = xmlValue(ff[[4]]) 
+    }  
+    
+    else if (year == 1999) { 
+      # Get preformatted text from <pre> elements
+      tt = getNodeSet(doc, "//pre")
+      txt2 = xmlValue(tt[[1]])
+      els = strsplit(txt2, "\n")[[1]]   
+    } 
+    
+  else {
+      # Get preformatted text from <pre> elements
+      pres = getNodeSet(doc, "//pre")
+      txt = xmlValue(pres[[1]])
+      els = strsplit(txt, "\r\n")[[1]]   
+    } 
+  if (is.null(file)) return(els)
+    # Write the lines as a text file.
+    writeLines(els, con = file)
+  }
+```
+
+IGNORE for now: testing extractResTable4 function
+```{r}
+test <- tempfile(fileext = '.txt')
+wTables4 = mapply(extractResTable3, url = urls, year = years)
+
+names(wTables4) = 1999:2012
+sapply(wTables4, length)
+```
+
+checking scrapped data
+```{r}
+writeLines(wTables3$'2001')
+```
+This saves the data
+```{r}
+save(wTables3, file = "WTables_2000-12.rda")
+save(els99, file = "WTable99.rda")
+```
+
+
+========== From book to clean extracted data====================
+
+```{r}
+eqIndex = grep("^===", wTables3$"2000") 
+
+eqIndex
+```
+
+```{r}
+spacerRow = els99[eqIndex] 
+headerRow = els99[eqIndex - 1]  
+body = els99[ -(1:eqIndex)] 
+
+
+```
+
+```{r}
+findColLocs = 
+  function(spacerRow)
+    {
+    spaceLocs = gregexpr("", spacerRow)[[1]] 
+    rowLength = nchar(spacerRow)
+    
+    if (substring(spacerRow, rowLength, rowLength) != "") 
+      return( c(0, spaceLocs, rowLength + 1)) 
+    else return(c(0, spaceLocs))  } 
+
+```
+
+```{r}
+selectCols =  function(colNames, headerRow, searchLocs)  {  
+  sapply(colNames,  function(name, headerRow, searchLocs) 
+  {  startPos = regexpr(name, headerRow)[[1]]  
+    if (startPos == -1)  return( c(NA, NA)) 
+  index = sum(startPos >= searchLocs) 
+  c(searchLocs[index] + 1, searchLocs[index + 1] - 1)  }, 
+  headerRow = headerRow, 
+  searchLocs = searchLocs) 
+  } 
+
+
+```
+
+
+```{r}
+extractVariables = 
+  function(file, varNames =c("name", "home", "ag", "gun",  "net", "time")) 
+  {  
+    #Find the index of the row with =s 
+    eqIndex = grep("^===", file) 
+    #Extract the two key rows and the data
+    spacerRow = file[eqIndex] 
+    headerRow = tolower(file[ eqIndex - 1]) 
+    body = file[ -(1: eqIndex)] 
+    #Obtain the starting and ending positions of variables  
+    searchLocs = findColLocs(spacerRow)  
+    locCols = selectCols(varNames, headerRow, searchLocs) 
+    Values = mapply(substr, list(body),
+                    start = locCols[1,], 
+                    stop = locCols[2,]) 
+    colnames(Values) = varNames  
+    invisible(Values)  } 
+```
+
+```{r}
+wfilenames = paste("WomenTxt/", 1999:2012, ".txt", sep ="") 
+wFiles = lapply(els99, readLines)  
+names(wFiles) = 1999:2012 
+
+```
+
+```{r}
+Y99_file = extractVariables(els99)
+
+```
