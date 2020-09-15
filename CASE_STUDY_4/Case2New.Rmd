@@ -12,7 +12,60 @@ knitr::opts_chunk$set(echo = TRUE)
 Library
 ```{r}
 library(XML)
+library(stringr)
 ```
+
+```{r}
+findColLocs = 
+  function(spacerRow)
+    {
+    spaceLocs = gregexpr(" ", spacerRow)[[1]] 
+    rowLength = nchar(spacerRow)
+    
+    if (substring(spacerRow, rowLength, rowLength) != "") 
+      return( c(0, spaceLocs, rowLength + 1)) 
+    else return(c(0, spaceLocs))  } 
+
+```
+
+```{r}
+selectCols =  function(colNames, headerRow, searchLocs)  {  
+  sapply(colNames,  function(name, headerRow, searchLocs) 
+  {  startPos = regexpr(name, headerRow)[[1]]  
+    if (startPos == -1)  return( c(NA, NA)) 
+  index = sum(startPos >= searchLocs) 
+  c(searchLocs[index] + 1, searchLocs[index + 1] - 1)  }, 
+  headerRow = headerRow, 
+  searchLocs = searchLocs) 
+  } 
+
+
+```
+
+
+```{r}
+extractVariables =
+function(file, varNames =c("name", "home", "ag", "gun",
+"net", "time"))
+{
+# Find the index of the row with =s
+
+eqIndex = grep("^===", file)
+# Extract the two key rows and the data
+spacerRow = file[eqIndex]
+file = file[grep('^#', file, invert = TRUE)]
+
+headerRow = tolower(file[ eqIndex - 1 ])
+body = file[ -(1 : eqIndex) ]
+# Obtain the starting and ending positions of variables
+searchLocs = findColLocs(spacerRow)
+locCols = selectCols(varNames, headerRow, searchLocs)
+Values = mapply(substr, list(body), start = locCols[1, ], stop = locCols[2, ])
+colnames(Values) = varNames
+invisible(Values)
+}
+```
+
 
 URLS for scrapping data
 ```{r}
@@ -49,27 +102,40 @@ extractResTable3 =
   #find the preformatted text,  
   #and return as a character vector.  
   function(url, year)  {  
+    doc = htmlParse(url, encoding = 'latin1')      
+
     
-    doc = htmlParse(url, encoding = 'UTF-8')  
-    
-    if (year == 2000) {  
+    if (year == 2000) { 
+
     #Get text from 4th font element 
     #File is ill-formed so <pre> search doesn’t work.  
     ff = getNodeSet(doc, "//font")  
     txt = xmlValue(ff[[4]]) 
+    els = strsplit(txt, "\r\n")[[1]]  
     }  
     
     else if (year == 1999) { 
+
       # Get preformatted text from <pre> elements
       pres = getNodeSet(doc, "//pre")
       txt = xmlValue(pres[[1]])
-      els = strsplit(txt, "\n")[[1]]   
+      els1 = strsplit(txt, "\n") 
+      els = els1[[1]]
+    } 
+      else if (year == 2011) { 
+      # Get preformatted text from <pre> elements
+      pres = getNodeSet(doc, "//pre")
+      txt = xmlValue(pres[[1]])
+      els1 = strsplit(txt, "\r\n") 
+      els = els1[[1]]
     } 
     
-  else {  preNode = getNodeSet(doc, "//pre")  
+  else {  
+
+  preNode = getNodeSet(doc, "//pre")  
   txt = xmlValue(preNode[[1]]) 
-  }  
   els = strsplit(txt, "\r\n")[[1]]  
+  }  
   return(els) 
   } 
 
@@ -78,12 +144,11 @@ extractResTable3 =
 Run extracResTable3 function and check character lenght count. Note: 1999 does not parse correctly the code chunk below this chunk will pull the 1999 data correctly.
 ```{r}
 wTables3 = mapply(extractResTable3, url = urls, year = years)
-
 names(wTables3) = 1999:2012
 sapply(wTables3, length)
 ```
 
-Scrape 1999 data this will output els99  a character string with the 1999 women data you need
+IGNORE: Scrape 1999 data this will output els99  a character string with the 1999 women data you need
 ```{r}
 # 1999
 url <- urls[1]
@@ -115,9 +180,11 @@ extractResTable4 =
     
     else if (year == 1999) { 
       # Get preformatted text from <pre> elements
-      tt = getNodeSet(doc, "//pre")
-      txt2 = xmlValue(tt[[1]])
-      els = strsplit(txt2, "\n")[[1]]   
+      pres = getNodeSet(doc, "//pre")
+      txt = xmlValue(pres[[1]])
+      els1 = strsplit(txt, "\n") 
+      els = els1[[1]]
+      print(length(els))
     } 
     
   else {
@@ -145,19 +212,254 @@ checking scrapped data
 ```{r}
 writeLines(wTables3$'2001')
 ```
+
 This saves the data
 ```{r}
 save(wTables3, file = "WTables_2000-12.rda")
 save(els99, file = "WTable99.rda")
 ```
 
+IGNORE: Drew work to figure out why 1999 was parsing weird
+```{r}
+extractResTable3(urls[1], years[1])
+length(wTables3$`1999`)
+els1 = strsplit(txt, "\n") 
+els1
+```
+IGNORE: Drew work to figure out why 1999 was parsing weird
+```{r}
+doc = htmlParse(urls[1], encoding = 'UTF-8')  
+pres = getNodeSet(doc, "//pre")
+txt = xmlValue(pres[[1]])
+els1 = strsplit(txt, "\n") 
+els = els1[[1]]
+length(els)
+```
+
+Initial NA handling
+```{r}
+eqIndex = grep("^===", wTables3$"2008") 
+
+spacerRow = wTables3$'2008'[eqIndex] 
+headerRow = wTables3$'2008'[eqIndex - 1]  
+body = wTables3$'2008'[ -(1:eqIndex)] 
+findColLocs(eqIndex)
+```
+2001, 2011 are problems
+2001 error handling: no header
+```{r}
+table = extractVariables(wTables3$`2004`)
+wTables3$`2001`[3] = wTables3$`2002`[3]
+wTables3$`2001`[2] = wTables3$`2002`[2]
+table = extractVariables(wTables3$`2001`)
+head(wTables3$`2001`)
+```
+
+2011 handling: invalid multibyte string. Handled in initial call; had to change encoding to latin1
+```{r}
+table = extractVariables(wTables3$`2006`)
+```
+2006 time handling. See analysis later
+```{r}
+wTables3$`2006`[8] = '===== ======== ====== ====================== == ================ ====== =======  ===== = '
+```
+
+
+```{r}
+womenResMat = lapply(wTables3, extractVariables)
+sapply(womenResMat, nrow)
+```
+#####################################################
+Data cleaning!
+2003 is clearly an issue. 2001 might be an issue with young people racing. 2009 and 2011 are questionable. Lets start with 03. Looking at the actual website, the age moves around quite a bit. Lets use the same fix that they had in the men's data and see if it works for women's data.... It fixed it. 
+```{r}
+age = sapply(womenResMat,function(x) as.numeric(x[ , 'ag']))
+boxplot(age, ylab = "Age", xlab = "Year")
+```
+Our 2003 fix seemed to help 2011 as well. 2001 and 2009 are still potential problems. It looks like many of the NA's are the result of people not entering their age, or rows that are header/footer rows.  After removing header/footer rows, it looks like there are still a few NA's per year. Examining the worst of these years, 2005, it seems like all the NA's are actually missing ages for the people that ran. We'll keep them in for now but in our age analysis we will remove them. 
+```{r}
+sapply(age, function(x) sum(is.na(x)))
+age1999 = age[["2005"]]
+header = grep("^===", wTables3[['2005']])
+badAgeIndex = which(is.na(age1999)) + header
+badAgeIndex
+wTables3[['2005']][ badAgeIndex ]
+```
+2009 and 2001 have low ages. There is only one low age in each of the dataframes, so I think it's worth it just to treat these as outliers and replace their age with what is listed on the website. In this case, #2611 in 2001 was listed as 0 and #6619 in 2009 was listed as 7, and she ran a 2 hour race. Pretty solid outlier, but why can't a 7 year old run a 2 hour 10 mile race.
+```{r}
+age2001 = age$`2001`
+which(age2001 < 10)
+age2009 = age$`2009`
+which(age2009 < 10)
+eqIndex09 = grep("^===", wTables3[['2009']])
+eqIndex01 = grep("^===", wTables3[['2001']])
+womenResMat[['2001']][ which(age2001 < 10), ] 
+womenResMat[['2009']][ which(age2009 < 10), ] 
+wTables3[['2001']][ which(age2001 < 10) + eqIndex01 ] 
+wTables3[['2009']][ which(age2009 < 10) + eqIndex09 ] 
+womenResMat$`2001` = womenResMat$`2001`[-c(2611),]
+```
+
+
+```{r}
+age = sapply(womenResMat,function(x) as.numeric(x[ , 'ag']))
+boxplot(age, ylab = "Age", xlab = "Year")
+```
+###############################################################
+Time Analysis
+When trying to apply the createDF function to the women data, we get a bunch of NA's. What's going on?
+```{r}
+womendf = mapply(createDF, womenResMat, year = 1999:2012, sex = rep('F', 14), SIMPLIFY = FALSE)
+
+```
+Looks like we run into some issues converting time. Let's remove stars and hashtags from the time columns. 
+```{r}
+sapply(womendf, function(x) sum(is.na(x$runTime)))
+```
+After removing NA's, it looks like we have one left in 2002 and a few more in 2006. 
+```{r}
+
+womendf = mapply(createDF, womenResMat, year = 1999:2012, sex = rep('F', 14), SIMPLIFY = FALSE)
+sapply(womendf, function(x) sum(is.na(x$runTime)))
+```
+It's a footer line. We can go ahead and remove it. 
+```{r}
+womendf$`2002`[is.na(womendf$`2002`$runTime),]
+womendf$`2002` = womendf$`2002`[-c(3335),]
+```
+
+
+Alright, now we're left with a ton of NA's in the 2006 dataframe. 
+```{r}
+sapply(womendf, function(x) sum(is.na(x$runTime)))
+```
+It looks like the time is in the home column, for some reason. It's because there's no break in the = signs between hometown and net time. 64 needs to be turned into a blank
+```{r}
+head(womendf$`2006`)
+womenResMat$`2006`
+time = str(Res[,2], '\((\\D\\s{1,})\\D)\\D\\s{1,})')
+
+time = str_extract(womenResMat$`2006`[,2], '\\d')
+time = unlist(time)
+useTime = time[seq(2,length(time), 2)]
+loc = time[seq(1,length(time), 2)]
+useTime[5434]
+length(useTime)
+```
+
+
+```{r}
+time = sapply(womendf,function(x) as.numeric(x[ , 'runTime']))
+boxplot(time, ylab = "time", xlab = "Year")
+```
+
+```{r}
+which(womendf$`2011`$runTime == max(womendf$`2011`$runTime))
+wTables3$`2011`[7785+8]
+womendf$`2011`$runTime[7785] = 127.65
+```
+
+```{r}
+time = sapply(womendf,function(x) as.numeric(x[ , 'runTime']))
+boxplot(time, ylab = "time", xlab = "Year")
+```
+```{r}
+
+sapply(womendf, function(x) sum(is.na(x)))
+
+womendf$`2006`[which(is.na(womendf$`2006`$runTime)),]
+womenResMat$`2006`[which(is.na(womendf$`2006`$runTime)),]
+
+```
+
+```{r}
+womendf$`2003`$home = substring(womendf$`2003`$home, 3)
+```
+
+
+```{r}
+womendf
+nawomendf = lapply(womendf, function(x) na.omit(x))
+class(nawomendf)
+
+fullwomendf = do.call(rbind, womendf)
+fullwomendf
+write.csv(fullwomendf, 'Case2_FullDataFrame.csv')
+```
+
+```{r}
+parseTime = function(timePieces){
+if (length(timePieces) == 2) timePieces[1] + timePieces[2]/60
+else 
+60*timePieces[1] + timePieces[2] + timePieces[3]/60
+}
+convertTime = 
+function(useTime) {
+timePieces = strsplit(useTime, ":")
+timePieces = sapply(timePieces, as.numeric)
+sapply(timePieces, parseTime)
+}
+```
+
+
+```{r}
+createDF =
+function(Res, year, sex)
+{
+# Determine which time to use
+useTime = if( !is.na(Res[1, 'net']) )
+Res[ , 'net']
+else if( !is.na(Res[1, 'gun']) )
+Res[ , 'gun']
+else
+Res[ , 'time']
+# Remove # and * and blanks from time
+useTime = gsub("[#\\*[:blank:]]", "", useTime)
+# Drop rows with no time
+Res = Res[ useTime != "", ]
+runTime = convertTime(useTime[ useTime != "" ])
+Results = data.frame(year = rep(year, nrow(Res)),
+sex = rep(sex, nrow(Res)),
+name = Res[ , 'name'],
+home = Res[ , 'home'],
+age = as.numeric(Res[, 'ag']),
+runTime = runTime,
+stringsAsFactors = FALSE)
+invisible(Results)
+}
+```
+
+
+################################################################
+To Remove NA's for age analysis 
+```{r}
+womenTimeMat = sapply(womenResMat,function(x)  na.omit(x))
+```
+
+
+
 
 ========== From book to clean extracted data====================
 
 ```{r}
-eqIndex = grep("^===", wTables3$"2000") 
+file = wTables3$`2000`
+varNames =c("name", "home", "ag", "gun",
+"net", "time")
+eqIndex = grep("^===", file)
+# Extract the two key rows and the data
+spacerRow = file[eqIndex]
+file = file[grep('^#', file, invert = TRUE)]
+file[length(file)]
+headerRow = tolower(file[ eqIndex - 1 ])
+body = file[ -(1 : eqIndex) ]
+# Obtain the starting and ending positions of variables
+searchLocs = findColLocs(spacerRow)
+locCols = selectCols(varNames, headerRow, searchLocs)
+Values = mapply(substr, list(body), start = locCols[1, ], stop = locCols[2, ])
+colnames(Values) = varNames
+Values = Values[grep('^#', Values[,3], invert = TRUE)]
+invisible(Values)
 
-eqIndex
 ```
 
 ```{r}
@@ -172,7 +474,7 @@ body = els99[ -(1:eqIndex)]
 findColLocs = 
   function(spacerRow)
     {
-    spaceLocs = gregexpr("", spacerRow)[[1]] 
+    spaceLocs = gregexpr(" ", spacerRow)[[1]] 
     rowLength = nchar(spacerRow)
     
     if (substring(spacerRow, rowLength, rowLength) != "") 
@@ -187,7 +489,7 @@ selectCols =  function(colNames, headerRow, searchLocs)  {
   {  startPos = regexpr(name, headerRow)[[1]]  
     if (startPos == -1)  return( c(NA, NA)) 
   index = sum(startPos >= searchLocs) 
-  c(searchLocs[index] + 1, searchLocs[index + 1] - 1)  }, 
+  c(searchLocs[index] + 1, searchLocs[index + 1])  }, 
   headerRow = headerRow, 
   searchLocs = searchLocs) 
   } 
@@ -197,23 +499,26 @@ selectCols =  function(colNames, headerRow, searchLocs)  {
 
 
 ```{r}
-extractVariables = 
-  function(file, varNames =c("name", "home", "ag", "gun",  "net", "time")) 
-  {  
-    #Find the index of the row with =s 
-    eqIndex = grep("^===", file) 
-    #Extract the two key rows and the data
-    spacerRow = file[eqIndex] 
-    headerRow = tolower(file[ eqIndex - 1]) 
-    body = file[ -(1: eqIndex)] 
-    #Obtain the starting and ending positions of variables  
-    searchLocs = findColLocs(spacerRow)  
-    locCols = selectCols(varNames, headerRow, searchLocs) 
-    Values = mapply(substr, list(body),
-                    start = locCols[1,], 
-                    stop = locCols[2,]) 
-    colnames(Values) = varNames  
-    invisible(Values)  } 
+extractVariables =
+function(file, varNames =c("name", "home", "ag", "gun",
+"net", "time"))
+{
+# Find the index of the row with =s
+
+eqIndex = grep("^===", file)
+# Extract the two key rows and the data
+spacerRow = file[eqIndex]
+file = file[grep('^#', file, invert = TRUE)]
+
+headerRow = tolower(file[ eqIndex - 1 ])
+body = file[ -(1 : eqIndex) ]
+# Obtain the starting and ending positions of variables
+searchLocs = findColLocs(spacerRow)
+locCols = selectCols(varNames, headerRow, searchLocs)
+Values = mapply(substr, list(body), start = locCols[1, ], stop = locCols[2, ])
+colnames(Values) = varNames
+invisible(Values)
+}
 ```
 
 ```{r}
