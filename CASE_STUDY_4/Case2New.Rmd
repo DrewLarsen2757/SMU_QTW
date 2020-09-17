@@ -9,12 +9,20 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Library
 ```{r}
 library(XML)
 library(stringr)
 ```
 
+Data Extraction (Execution):
+Raw data extraction: After separating the data into individual rows, we had to extract the variables from the raw data. We use the headers at the top and the row with the equal signs to guide our data extraction. For most years, the breaks in the row of equal signs correspond to a new variable. We use the extract variables function below to create matrices from the raw data. The function takes the raw data that is separated by row, finds the locations of the breaks in the row with the equal signs, and uses that location as a guide where to split every line in the raw data into a new variable. These variables are then named using the header row above the equal sign line. We found that year 2001 did not have a header row, but did have the equal sign separator. 2002 and 2001 had the same header row structure, so we copy the header row from 2002 and use it for 2001. 2011 had a problem initially with parsing using UTF-8. Changing the htmlParse function in the extractResTable3 function to have encoding = 'latin1' solved the problem. It was also found that 2006 did not have a separation in the equal sign row between location and time, so we manually changed an equal sign to a space in the row so our function would automatically separate these variables. Our extractVariables function was successfully run on all raw data objects and outputted a list of individual matrices for each year. 
+
+Clean up: After extracting raw results, the data needed significant amounts of cleaning. There were NA's and outliers all over the place. We had to assign header names and change data types. Header names were addressed in our extractVariables funcition, and the remaining variables are ("name", "home", "ag", "gun", "net", "time"). Name is the name of the runner, home is their home location, ag is their age, gun is their gun time (if applicable), net is their net time (if applicable) and time is their race time (if applicable). If we have a net time variable, we use that to calculate time in the final dataframe. If we have a gun time variable but no net time varabile, we use that to calculate time in the final dataframe. If we don't have a gun or net time but we have a time variable, we use that to caluculate time in the final dataframe. After addressing header names, we changed the age variable to numeric. We had to do some data parsing to change the time variable to numeric as well: the data came in as hours:minutes:seconds. We were interested in analyzing the time variable in terms of minutes, so we multipled hours by 60, divided seconds by 60 and kept the minutes, and added those 3 variables together to get total minutes. This result was then turned into a numeric varialbe. 
+
+Missing values and outliers: There were outliers and NA values in both of our numeric columns: age and time. These needed to be dealt with. Looking at box plots, it was clear that 2003 was definitely an issue, and 2009, 2001 and 2011 could potentially be issues with young runners. To deal with 2003, we found that the age column fluxuated by a column in either direction as we went down the raw data. Increasing the search by 1 column for the age variable solved the issue with 2003 and 2011. In 2001, there was a racer with an age of 0. When we went back and looked at the raw data, it was found that this racer was listed as 0, so we just removed this racer from the data. In 2011, there was a racer that was 7 years old. This was confirmed in the raw data. While the racer was young, it was determined that it was possible for a 7 year old to run a 10 mile race, so the data point was kept. There were still a few outliers in the data frame, but those were kept in there for analysis in our EDA. Now that we dealt with NA's and outliers in the age variable, we decided to look at the time variable. Stars and hashtags in the time variable were messing up our multiplication initially. Removing those in the initial time calculation function removed a singificant amount of NA's in many years. There were still NA's in 2002 and 2006. 2006 had times that were in the location variable. It was determined that the data wasn't being parsed correctly due to a missing break in the equal sign row. The break was manually inputted, which fixed the NA's in 2006. The one remaining NA in 2002 was a footer line, which was removed. Looking at box plots of the run times by year, nothing stood out as problematic in terms of outliers, so we proceed with our analysis. 
+
+
+Function to find the location of column names
 ```{r}
 findColLocs = 
   function(spacerRow)
@@ -28,6 +36,7 @@ findColLocs =
 
 ```
 
+Function to select the columns for the final analysis
 ```{r}
 selectCols =  function(colNames, headerRow, searchLocs)  {  
   sapply(colNames,  function(name, headerRow, searchLocs) 
@@ -42,6 +51,7 @@ selectCols =  function(colNames, headerRow, searchLocs)  {
 
 ```
 
+Function to convert time from %h:%m:%s to minutes. 
 ```{r}
 parseTime = function(timePieces){
 if (length(timePieces) == 2) timePieces[1] + timePieces[2]/60
@@ -56,7 +66,7 @@ sapply(timePieces, parseTime)
 }
 ```
 
-
+Function to create the final dataframe for analysis
 ```{r}
 createDF =
 function(Res, year, sex)
@@ -84,6 +94,7 @@ invisible(Results)
 }
 ```
 
+Function to extract variables from the full initial raw data
 ```{r}
 extractVariables =
 function(file, varNames =c("name", "home", "ag", "gun",
@@ -136,7 +147,7 @@ years = 1999:2012
 
 
 
-Function to parse data
+Function to pull and parse inital data from the URLs
 ```{r}
 extractResTable3 =  
   #Retrieve data from web site, 
@@ -229,20 +240,21 @@ IGNORE: 2011 handling: invalid multibyte string. Handled in initial call; had to
 ```{r}
 table = extractVariables(wTables3$`2011`)
 ```
+
 2006 time handling. See analysis later
 ```{r}
 wTables3$`2006`[8] = '===== ======== ====== ====================== == =============== ======= ======== ===== = '
 wTables3$`2006`[1:10]
 ```
 
-
+Applying the extract varaiables function to the raw data 
 ```{r}
 womenResMat = lapply(wTables3, extractVariables)
 sapply(womenResMat, nrow)
 ```
 #####################################################
 Data cleaning!
-2003 is clearly an issue. 2001 might be an issue with young people racing. 2009 and 2011 are questionable. Lets start with 03. Looking at the actual website, the age moves around quite a bit. Lets use the same fix that they had in the men's data and see if it works for women's data.... It fixed it. 
+Initial analysis: 2003 is clearly an issue. 2001 might be an issue with young people racing. 2009 and 2011 are questionable. Lets start with 03. Looking at the actual website, the age moves around quite a bit. We expand the age search to 1 more column, which fixes the dataframe. 
 ```{r}
 age = sapply(womenResMat,function(x) as.numeric(x[ , 'ag']))
 boxplot(age, ylab = "Age", xlab = "Year")
@@ -256,7 +268,7 @@ badAgeIndex = which(is.na(age1999)) + header
 badAgeIndex
 wTables3[['2005']][ badAgeIndex ]
 ```
-2009 and 2001 have low ages. There is only one low age in each of the dataframes, so I think it's worth it just to treat these as outliers and replace their age with what is listed on the website. In this case, #2611 in 2001 was listed as 0 and #6619 in 2009 was listed as 7, and she ran a 2 hour race. Pretty solid outlier, but why can't a 7 year old run a 2 hour 10 mile race.
+2009 and 2001 have low ages. There is only one low age in each of the dataframes, so I think it's worth it just to treat these as outliers and replace their age with what is listed on the website. In this case, #2611 in 2001 was listed as 0 and #6619 in 2009 was listed as 7, and she ran a 2 hour race. Why can't a 7 year old run a 2 hour 10 mile race? We'll keep it in the data.
 ```{r}
 age2001 = age$`2001`
 which(age2001 < 10)
@@ -271,7 +283,7 @@ wTables3[['2009']][ which(age2009 < 10) + eqIndex09 ]
 womenResMat$`2001` = womenResMat$`2001`[-c(2611),]
 ```
 
-
+Double checking the boxplot to make sure all the ages look good. They do. We can proceed and look at the time variable. 
 ```{r}
 age = sapply(womenResMat,function(x) as.numeric(x[ , 'ag']))
 boxplot(age, ylab = "Age", xlab = "Year")
@@ -287,9 +299,8 @@ Looks like we run into some issues converting time. Let's remove stars and hasht
 ```{r}
 sapply(womendf, function(x) sum(is.na(x$runTime)))
 ```
-After removing NA's, it looks like we have one left in 2002 and a few more in 2006. 
+After removing stars and hashtags, it looks like we have one left in 2002 and a few more in 2006. 
 ```{r}
-
 womendf = mapply(createDF, womenResMat, year = 1999:2012, sex = rep('F', 14), SIMPLIFY = FALSE)
 sapply(womendf, function(x) sum(is.na(x$runTime)))
 ```
@@ -304,7 +315,7 @@ Alright, now we're left with a ton of NA's in the 2006 dataframe.
 ```{r}
 sapply(womendf, function(x) sum(is.na(x$runTime)))
 ```
-It looks like the time is in the home column, for some reason. It's because there's no break in the = signs between hometown and net time. Space #64 needs to be turned into a blank. 
+It looks like the time is in the home column because there's no break in the = signs between hometown and net time. Space #64 needs to be turned into a blank. 
 
 ```{r}
 time = sapply(womendf,function(x) as.numeric(x[ , 'runTime']))
@@ -324,7 +335,7 @@ womendf$`2006`[which(is.na(womendf$`2006`$runTime)),]
 womenResMat$`2006`[which(is.na(womendf$`2006`$runTime)),]
 
 ```
-
+Create a full single dataframe with all data with year and sex as added columns. 
 ```{r}
 womendf
 nawomendf = lapply(womendf, function(x) na.omit(x))
