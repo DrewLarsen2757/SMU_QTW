@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(XML)
 library(stringr)
+library(dplyr)
 ```
 
 Data Extraction (Execution):
@@ -343,5 +344,72 @@ class(nawomendf)
 
 fullwomendf = do.call(rbind, womendf)
 fullwomendf
-write.csv(fullwomendf, 'Case2_FullDataFrame.csv')
+```
+##############################################################
+Analysis: Have the ages of runners changed over the years?
+Looking at the box plot below, there isn't a lot of evidence that the mean age has changed year over year. We will run a more formal analysis to see if this is true or not.
+```{r}
+age = sapply(womenResMat,function(x) as.numeric(x[ , 'ag']))
+boxplot(age, ylab = "Age", xlab = "Year")
+```
+We are interested in running an ANOVA test to see if there is a statistical difference between the mean age in any year. First, we look at assumtptions. The 3 assumptions are that the observations are independently and randomly drawn from the population, the data is normally distributed in each year, and the populations have a common variance. Looking at the boxplot above, the data visually look to have a common variance, but there does seem to be a skew toward higher values in these distributions. I don't think ht's enough of a right skew to be a problem, so we continue as if the populations are normal. As far as independence goes, we know that the populations have gotten larger as time has gone on, but I don't think that the age distribution of one race would depend on the age distribution of another. Also, these data were not randomly chosen from a population, but due to the nature of the data (the population of the ages of people running the race each year), it wouldn't make sense to do a random selection technique. Therefore, I think we can run an ANOVA test in order to compare these year's distribution of age. 
+```{r}
+model = aov(age ~ year, data = fullwomendf)
+summary(model)
+```
+Using our ANOVA test, it appears that there is a statisticall significant difference in the mean age per year. Which years?
+We use the Bonferroni correction for multiple comparisons. Bonferroni was chosen due to it being a fairly conservative test: we want to make sure that the ages are different and the difference between ages in each year isn't due to us running many tests. It seems that the further the year is away, the more likely that the year has a significantly different age. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$age, fullwomendf$year, p.adjust.method = 'bonferroni', alternative = 'two.sided')
+tmodel
+```
+We ran the first analysis to find where differences were. This analysis looks at which years have higher ages. It looks like the ages aren't getting higher over time. The only statistically significant times where age got higher as year got higher is comparing 2008 to 2011 and 2012, 2009 to 2011 and 2012, and 2010 to 2012. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$age, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'greater')
+tmodel
+```
+Typically, it looks like age gets younger or stay the same as we move into the future. The outliers here is that 2011 and 2012 seem to have gotten older compared to 2008, 2009 and 2010. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$age, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'less')
+tmodel
+```
+We have statistically significant differences, but are the differences practical? The mean age seemed to float around 35 for 1999 - 2002, then drop down to 34ish for 2004 and 2005, then drop down below 34 for 2006 - 2010, bottoming out at 33.07 in 2009. The age then begins to come back up in 2010, 2011 and 2012, where the mean age is 33.88. Is a difference of a year or two different enough to make differences to the race strucutre? I expect 2013 to have a mean age between 33.5 - 34. 
+```{r}
+na.omit(fullwomendf) %>% group_by(year) %>% summarize(age = mean(age))
+```
+
+
+
+
+
+##############################################################
+Analysis: Have the times of runners changed over the years?
+Looking at the boxplot below, it doesn't look as if run time has changed over time. We run a more formal statistical analysis to check if times have changed statistically. 
+```{r}
+time = sapply(womendf,function(x) as.numeric(x[ , 'runTime']))
+boxplot(time, ylab = "time", xlab = "Year")
+```
+We are interested in running an ANOVA test to see if there is a statistical difference between the mean age in any year. First, we look at assumtptions. The 3 assumptions are that the observations are independently and randomly drawn from the population, the data is normally distributed in each year, and the populations have a common variance. Looking at the boxplot above, the data visually look to have a common variance. There may have been a slightly smaller variance in early years, but I think that has more to do with the 5-10 longest times in later years being fairly high. Looking at the size of the whiskers in the box plot, they look to be fairly constant over the years. Next we look at normality. The distributions appear to be normal, aside from some rather large outliers. The 5-10 longest times wouldn't have a huge effect on the shape of the distribution, since our sample sizes per year is in the thousands. As far as independence goes, we know that the populations have gotten larger as time has gone on, but I don't think that the time distribution of one race would depend on the time distribution of another. Also, these data were not randomly chosen from a population, but due to the nature of the data (the population of the times of people running the race each year), it wouldn't make sense to do a random selection technique. Therefore, I think we can run an ANOVA test in order to compare these year's distribution of times. 
+```{r}
+model = aov(runTime ~ year, data = fullwomendf)
+summary(model)
+```
+There is a statistically significant difference in the mean run time of at least one of the years. Which years? It looks like many years have statistically different times. This is a two sided test, so we are not sure if times have gotten larger or smaller, just that they're different. Now that we know they have changed in many years, we want to know how they have changed. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$runTime, fullwomendf$year, p.adjust.method = 'bonferroni', alternative = 'two.sided')
+tmodel
+```
+Looking into the future, it seems that in general, times have gotten larger. Comparing 1999 to future years, all years from 2004 - 2012 have a statistically significant increase in run time. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$runTime, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'greater')
+tmodel
+```
+Looking at years where run time has decreased as we look into the future, only 2000 is less than 1999, 2007 is less than 2005 and 2006, and 2012 is less than 2010 and 2011. The trend seems to be an increasing mean time as we move into the future, aside from 2000, 2007 and 2012 being slight outliers. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$runTime, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'less')
+tmodel
+```
+We know that there is a statistically significant increase in mean run time as years increase. Is there a practical difference? The lowest mean run time is about 94 minutes in 2000, while the longest mean run time is about 100 minutes in 2011. In a ten mile race, that is a mean increase of 42 seconds per mile. Is that a big enough difference to make changes in your race, considering that change occurred over 11 years? I expect 2013 to have a mean run time between 99 and 100 minutes for the 10 mile race. 
+```{r}
+na.omit(fullwomendf) %>% group_by(year) %>% summarize(runTime = mean(runTime))
 ```
