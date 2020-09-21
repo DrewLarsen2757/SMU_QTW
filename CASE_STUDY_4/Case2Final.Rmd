@@ -130,7 +130,6 @@ invisible(Values)
 ```
 
 
-
 ```{r}
 #URLS for scrapping data
 ubase = "http://www.cherryblossom.org/"
@@ -233,6 +232,7 @@ wTables3$`2006`[1:10]
 ```
 
 Below are the character lengths scrapped from the website for each year.
+
 ```{r}
 #Applying the extract varaiables function to the raw data 
 womenResMat = lapply(wTables3, extractVariables)
@@ -240,6 +240,7 @@ sapply(womenResMat, nrow)
 ```
 
 Below is an example of the scrapped raw data.
+
 ```{r}
 writeLines(wTables3$`2001`[1:10])
 ```
@@ -307,7 +308,7 @@ womendf = mapply(createDF, womenResMat, year = 1999:2012, sex = rep('F', 14), SI
 sapply(womendf, function(x) sum(is.na(x$runTime)))
 ```
 
-```{r, results='hide'}
+```{r, results='hide',message=FALSE,warning=FALSE}
 # After removing stars and hashtags, it looks like we have one left in 2002 and a few more in 2006. 
 womendf = mapply(createDF, womenResMat, year = 1999:2012, sex = rep('F', 14), SIMPLIFY = FALSE)
 sapply(womendf, function(x) sum(is.na(x$runTime)))
@@ -337,7 +338,7 @@ time = sapply(womendf,function(x) as.numeric(x[ , 'runTime']))
 boxplot(time, ylab = "time", xlab = "Year")
 ```
 
-```{r, results='hide'}
+```{r, results='hide',message=FALSE,warning=FALSE}
 #Final NA check, some are left in the age column. 
 sapply(womendf, function(x) sum(is.na(x)))
 
@@ -346,7 +347,7 @@ womenResMat$`2006`[which(is.na(womendf$`2006`$runTime)),]
 
 ```
  
-```{r, include=FALSE}
+```{r, results='hide',message=FALSE,warning=FALSE}
 #Create a full single dataframe with all data with year and sex as added columns.
 womendf
 nawomendf = lapply(womendf, function(x) na.omit(x))
@@ -358,7 +359,16 @@ fullwomendf
 
 ### Data Description
 
-Below are high level summary statistics of our overall data
+dataframe with 75971 observations on the following variables:
+
+* home - is the coutry of residency of the runner
+* runTime - is the is the official time from  starting gun to finish line.
+* sex - is the gender of the participant F for woman and M for man in this case we only have all woman runner
+* age - is the age of the runner
+* name - is the name of runner
+
+**Below are high level summary statistics of our overall data**
+
 ```{r}
 str(fullwomendf)
 
@@ -370,21 +380,29 @@ summary(fullwomendf)
 ```
 
 **Distribution of times:** 
-From the runTime distribution below we can see that the runtime is normally distributed from 1999-2012. This means that the expected female runtime is around 98 Min.
+
+From the run time distribution below we can see that the run time is normally distributed from 1999-2012. This means that the expected female run time is around 98 Min.
 The histogram below shows the overall distribution of female runner times.
+
 ```{r}
 
 df = na.omit(fullwomendf)
 df$year <- as.factor(df$year)
 hist(df$runTime, xlab = 'Time(minutes)', main = 'Distribution of time, Female Runners', col = 'blue', breaks = 10)
 ```
+
 **Age Distribution:**
-From the age distribution above we can see the participant's age goes from 10 to 70 and most of the participant are between 20-40. the data is skew to the right so we have some other participant form 40 to 60
+
+From the age distribution below we can see the participant's age goes from 10 to 70 and most of the participant are between 20-40. The data is skew to the right so we have some other participant form 40 to 60.
+
 ```{r}
 hist(df$age, xlab = 'Age', main = 'Distribution of age across Female Runners', col = 'red', breaks = 10)
 ```
+
 **Scatterplot:** 
-The scatter plot above across year doesn't show any particular linear trend but show a big cluster which tell us year by year the most of the participant are between age 25 and 50 and runtime are between 75 and 125 min.
+
+The scatter plot below is across years doesn't show any particular linear trend but show a big cluster which tell us year by year the most of the participant are between age 25 and 50 and runtime are between 75 and 125 min.
+
 ```{r}
 #A basic scatterplot with color depending on Species
 ggplot(df, aes(x=age, y=runTime, color=year)) + geom_point(size=1)
@@ -392,23 +410,30 @@ ggplot(df, aes(x=age, y=runTime, color=year)) + geom_point(size=1)
 ```
 
 **Correlation Plot:** 
-The correlation plot between the age and runTime, confirmed on the idea of weak correlation between the two variable
+
+The correlation plot below is between the age and run time, confirmed on the idea of weak correlation between the two variable.
+
 ```{r}
 #dot correlation
 data_num <- select_if(df, is.numeric) 
 correlations <- cor(select_if(df, is.numeric))
 corrplot(correlations, method="circle")
-
 ```
-**Bar Plot of # of people per race:** 
-As you can see from the plot above the number of participant increase every year, from 1999 to 2012 we have almost 4X the number of participant from 2500 to 10000.
+
+**Bar Plot of # of participants per race:** 
+
+As you can see from the plot below the number of participant is increasing every year, from 1999 to 2012 there are almost 4X the number of participant growing from 2500 to 10000.
+
 ```{r}
 ggplot(df, aes(year)) +  geom_bar(fill = "#0073C2FF")
 
 ```
-**Scatterplot of runtime vs. age, not colored:**
-From the plot above we can see there's not a clear linear trend or correlation between the age and the runtime. but confirm on the big cluster.
-```{r}
+
+**Scatter plot of run time vs. age, not colored:**
+
+From the scatter plot below we can see there's not a clear linear trend or correlation between the age and the run time. but confirm on the big cluster.
+
+```{r,message=FALSE,}
 ggplot(df, aes(x=age, y=runTime)) +  geom_point() +  geom_smooth(method=lm , color="red", fill="#69b3a2", se=TRUE)
 ```
 
@@ -417,9 +442,9 @@ ggplot(df, aes(x=age, y=runTime)) +  geom_point() +  geom_smooth(method=lm , col
 ### Analysis: Have the ages of runners changed over the years?
 **Through the analysis below we have come to the conclusion that there is a statistically significant decrese in age over time. The mean age seemed to float around 35 for 1999 - 2002, then drop down to 34ish for 2004 and 2005, then drop down below 34 for 2006 - 2010, bottoming out at 33.07 in 2009. The age then begins to come back up in 2010, 2011 and 2012, where the mean age is 33.88. Is a difference of a year or two different enough to make differences to the race structure? We expect 2013 to have a mean age between 33.5 - 34. **
 
-Looking at the violin below, there isn't a lot of evidence that the mean age has changed year over year. We will run a more formal analysis to see if this is true or not.
+The violin plot helps us to visualize how female age has been distributed over the 14 year period.The red line running through the plots represents the mean age each year. We can see that overall the age distributions has not varied considerably. Consistently we can see that the majority of female racers are between the ages of 25 to 35 years old with the overall mean around 34 and the overall median just a bit lower at around 32. There isn't a lot of evidence that the mean age has changed year over year. We will run a more formal analysis to see if this is true or not.
 
-```{r}
+```{r,warning=FALSE,message=FALSE}
 #get just age relevant data gather into a df
 age_df <- fullwomendf %>% select(year,name,home,age)
 
@@ -446,33 +471,44 @@ s <- scale_y_continuous(name = 'Age', breaks = c(10,20,30,40,50,60,70,80,90,100)
 
 
 p_age +s+ t 
+print('The mean female age is')
 mean(age_df$age)
+print('The median female age is') 
 median(age_df$age)
 ```
 
 We are interested in running an ANOVA test to see if there is a statistical difference between the mean age in any year. First, we look at assumptions. The 3 assumptions are that the observations are independently and randomly drawn from the population, the data is normally distributed in each year, and the populations have a common variance. Looking at the boxplot above, the data visually look to have a common variance, but there does seem to be a skew toward higher values in these distributions. I don't think ht's enough of a right skew to be a problem, so we continue as if the populations are normal. As far as independence goes, we know that the populations have gotten larger as time has gone on, but I don't think that the age distribution of one race would depend on the age distribution of another. Also, these data were not randomly chosen from a population, but due to the nature of the data (the population of the ages of people running the race each year), it wouldn't make sense to do a random selection technique. Therefore, I think we can run an ANOVA test in order to compare these year's distribution of age. 
+
 ```{r}
 model = aov(age ~ year, data = fullwomendf)
 summary(model)
 ```
+
 Using our ANOVA test, it appears that there is a statistical significant difference in the mean age per year. Which years?
 We use the Bonferroni correction for multiple comparisons. Bonferroni was chosen due to it being a fairly conservative test: we want to make sure that the ages are different and the difference between ages in each year isn't due to us running many tests. It seems that the further the year is away, the more likely that the year has a significantly different age. 
+
 ```{r}
 tmodel = pairwise.t.test(fullwomendf$age, fullwomendf$year, p.adjust.method = 'bonferroni', alternative = 'two.sided')
 tmodel
 ```
+
 We ran the first analysis to find where differences were. This analysis looks at which years have higher ages. It looks like the ages aren't getting higher over time. The only statistically significant times where age got higher as year got higher is comparing 2008 to 2011 and 2012, 2009 to 2011 and 2012, and 2010 to 2012. 
+
 ```{r}
 tmodel = pairwise.t.test(fullwomendf$age, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'greater')
 tmodel
 ```
+
 Typically, it looks like age gets younger or stay the same as we move into the future. The outliers here is that 2011 and 2012 seem to have gotten older compared to 2008, 2009 and 2010. 
+
 ```{r}
 tmodel = pairwise.t.test(fullwomendf$age, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'less')
 tmodel
 ```
+
 We have statistically significant differences, but are the differences practical? The mean age seemed to float around 35 for 1999 - 2002, then drop down to 34ish for 2004 and 2005, then drop down below 34 for 2006 - 2010, bottoming out at 33.07 in 2009. The age then begins to come back up in 2010, 2011 and 2012, where the mean age is 33.88. Is a difference of a year or two different enough to make differences to the race structure? I expect 2013 to have a mean age between 33.5 - 34. 
-```{r}
+
+```{r,warning=FALSE,message=FALSE}
 na.omit(fullwomendf) %>% group_by(year) %>% summarize(age = mean(age))
 ```
 
@@ -480,8 +516,9 @@ na.omit(fullwomendf) %>% group_by(year) %>% summarize(age = mean(age))
 **Through the analysis below we have come to the conclusion that there is a statistically significant increase in time as years have increased but given this increase is only 42 seconds per-mile across the largest variances we do not think that in a practical sense the change is significant enough to warrant any structural changes to the race.**
 
 
-Looking at the violin plots below, it doesn't look as if run time has changed over time. We run a more formal statistical analysis to check if times have changed statistically. 
-```{r}
+Looking at the violin plots below we are able to see the distributions of run time over the years along with the mean which is represented by the red line running through each plot. It doesn't look as if run time has changed much over time. We will run a more formal statistical analysis to check if times have changed statistically. 
+
+```{r,warning=FALSE,message=FALSE}
 time_df <- fullwomendf %>% select(year,name,home,runTime)
 
 #remove NA values in age
@@ -497,38 +534,49 @@ p_time <- ggplot(time_df, aes(x=year, y = runTime)) +geom_violin() + geom_boxplo
 
 s2 <- scale_y_continuous(name = 'Run Time in min.', breaks = c(50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200))
 
-p_time +s2 
+p_time +s2
+print('The mean female run times')
 mean(time_df$runTime)
+print('The median female run times')
 median(time_df$runTime)
 ```
 
 We are interested in running an ANOVA test to see if there is a statistical difference between the mean age in any year. First, we look at assumptions. The 3 assumptions are that the observations are independently and randomly drawn from the population, the data is normally distributed in each year, and the populations have a common variance. Looking at the boxplot above, the data visually look to have a common variance. There may have been a slightly smaller variance in early years, but I think that has more to do with the 5-10 longest times in later years being fairly high. Looking at the size of the whiskers in the box plot, they look to be fairly constant over the years. Next we look at normality. The distributions appear to be normal, aside from some rather large outliers. The 5-10 longest times wouldn't have a huge effect on the shape of the distribution, since our sample sizes per year is in the thousands. As far as independence goes, we know that the populations have gotten larger as time has gone on, but I don't think that the time distribution of one race would depend on the time distribution of another. Also, these data were not randomly chosen from a population, but due to the nature of the data (the population of the times of people running the race each year), it wouldn't make sense to do a random selection technique. Therefore, I think we can run an ANOVA test in order to compare these year's distribution of times. 
+
 ```{r}
 model = aov(runTime ~ year, data = fullwomendf)
 summary(model)
 ```
+
 There is a statistically significant difference in the mean run time of at least one of the years. Which years? It looks like many years have statistically different times. This is a two sided test, so we are not sure if times have gotten larger or smaller, just that they're different. Now that we know they have changed in many years, we want to know how they have changed. 
+
 ```{r}
 tmodel = pairwise.t.test(fullwomendf$runTime, fullwomendf$year, p.adjust.method = 'bonferroni', alternative = 'two.sided')
 tmodel
 ```
+
 Looking into the future, it seems that in general, times have gotten larger. Comparing 1999 to future years, all years from 2004 - 2012 have a statistically significant increase in run time. 
+
 ```{r}
 tmodel = pairwise.t.test(fullwomendf$runTime, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'greater')
 tmodel
 ```
+
 Looking at years where run time has decreased as we look into the future, only 2000 is less than 1999, 2007 is less than 2005 and 2006, and 2012 is less than 2010 and 2011. The trend seems to be an increasing mean time as we move into the future, aside from 2000, 2007 and 2012 being slight outliers. 
+
 ```{r}
 tmodel = pairwise.t.test(fullwomendf$runTime, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'less')
 tmodel
 ```
+
 We know that there is a statistically significant increase in mean run time as years increase. Is there a practical difference? The lowest mean run time is about 94 minutes in 2000, while the longest mean run time is about 100 minutes in 2011. In a ten mile race, that is a mean increase of 42 seconds per mile. Is that a big enough difference to make changes in your race, considering that change occurred over 11 years? I expect 2013 to have a mean run time between 99 and 100 minutes for the 10 mile race. 
-```{r}
+
+```{r,warning=FALSE,message=FALSE}
 na.omit(fullwomendf) %>% group_by(year) %>% summarize(runTime = mean(runTime))
 ```
 
 # Conclusion
 
-Based on our analysis of age and runner time we see statistically significant differences in both time and age but we do not believe that the differences are large enough to recommend or warrant any major changes to the Cherry Blossom 10 mile Race. We would recomend that given more time further anlysis of runner home town/location could highlight new insights into questions such as where are most of the runners from, what countries are represented, and how popular is the race internationally. As we have seen in the summary data the race itself is increasing in participation and has grown by more than 500 participants a year over the 14 year period from 1999 to 2012. We would recomend that based on the growth in popularity of the race considerations should be taken to add more facilites, water and water stations, gear/givaways, and make sure that any concessions are approriatly stocked for the increase in runners.
+Based on our analysis of age and runner time we see statistically significant differences in both time and age but we do not believe that the differences are large enough to recommend or warrant any major changes to the Cherry Blossom 10 mile Race. We would recommend that given more time further analysis of runner home town/location could highlight new insights into questions such as where are most of the runners from, what countries are represented, and how popular is the race internationally. As we have seen in the summary data the race itself is increasing in participation and has grown by more than 500 participants a year over the 14 year period from 1999 to 2012. We would recommend that based on the growth in popularity of the race considerations should be taken to add more facilities, water and water stations, gear/giveaways supplies, and make sure that any concessions are appropriately stocked for the increase in runners. We would also recommend a forecasting analysis of future race growth as a next step to help with budgeting, staffing, and purchase of supplies.
 
 
