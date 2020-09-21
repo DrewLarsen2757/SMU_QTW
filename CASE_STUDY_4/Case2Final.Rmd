@@ -406,7 +406,7 @@ The scatter plot below across years doesn't show any particular linear trend but
 
 ```{r}
 #A basic scatterplot with color depending on Species
-ggplot(df, aes(x=age, y=runTime, color=year)) + geom_point(size=1)
+ggplot(df, aes(x=age, y=runTime, color=year)) + geom_point(size=1) + ggtitle("Scatterplot of Run Time by Age for each years 1999-2012")
 
 ```
 
@@ -426,7 +426,7 @@ corrplot(correlations, method="circle")
 As you can see from the plot below the number of participants is increasing every year, from 1999 to 2012 there are almost 4X the number of participants, growing from 2500 to 10000.
 
 ```{r}
-ggplot(df, aes(year)) +  geom_bar(fill = "#0073C2FF")
+ggplot(df, aes(year)) +  geom_bar(fill = "#0073C2FF") + ggtitle("Participant count by Year")
 
 ```
 
@@ -435,7 +435,7 @@ ggplot(df, aes(year)) +  geom_bar(fill = "#0073C2FF")
 From the scatter plot below we can see there's not a clear linear trend or correlation between the age and the run time.
 
 ```{r,message=FALSE,}
-ggplot(df, aes(x=age, y=runTime)) +  geom_point() +  geom_smooth(method=lm , color="red", fill="#69b3a2", se=TRUE)
+ggplot(df, aes(x=age, y=runTime)) +  geom_point() +  geom_smooth(method=lm , color="red", fill="#69b3a2", se=TRUE) + ggtitle("Scatterplot of Run time by Age")
 ```
 
 # Business Analysis
@@ -456,7 +456,7 @@ age_df <- na.omit(age_df)
 age_df$year <- as.factor(age_df$year)
 
 #plot
-p_age <- ggplot(age_df, aes(x=year, y = age)) +geom_violin() + geom_boxplot(width = .1) + stat_summary(aes(y = age,group=year), fun.y=mean, colour="red", geom="line",group =1) +ggtitle("Plot of Age distribution over 14 Year period 1999-2012")
+p_age <- ggplot(age_df, aes(x=year, y = age)) +geom_violin() + geom_boxplot(width = .1) + stat_summary(aes(y = age,group=year), fun.y=mean, colour="red", geom="line",group =1) +ggtitle("Plot of Age distribution over 14 Year period 1999-2012 (Red line = Mean)")
 
 t <- theme(
   panel.background = element_rect(fill = "lightblue",
@@ -529,7 +529,7 @@ time_df <- na.omit(time_df)
 time_df$year <- as.factor(time_df$year)
 
 #plot
-p_time <- ggplot(time_df, aes(x=year, y = runTime)) +geom_violin() + geom_boxplot(width = .1) + stat_summary(aes(y = runTime,group=year), fun.y=mean, colour="red", geom="line",group =1) + ggtitle("Run Time distribution over 14 year period 1999 - 2012")
+p_time <- ggplot(time_df, aes(x=year, y = runTime)) +geom_violin() + geom_boxplot(width = .1) + stat_summary(aes(y = runTime,group=year), fun.y=mean, colour="red", geom="line",group =1) + ggtitle("Run Time distribution over 14 year period 1999 - 2012 (Red line = Mean)")
 
 
 
@@ -579,5 +579,4 @@ na.omit(fullwomendf) %>% group_by(year) %>% summarize(runTime = mean(runTime))
 # Conclusion
 
 Based on our analysis of age and runner time we see statistically significant differences in both time and age but we do not believe that the differences are large enough to recommend or warrant any major changes to the Cherry Blossom 10 mile Race. We would recommend that given more time further analysis of runner home town/location could highlight new insights into questions such as where are most of the runners from, what countries are represented, and how popular is the race internationally. As we have seen in the summary data that the race itself is increasing in participation and has grown by more than 500 participants a year over the 14 year period from 1999 to 2012. We would recommend that based on the growth in popularity of the race considerations should be taken to add more facilities, water and water stations, gear/giveaways supplies, and make sure that any concessions are appropriately stocked for the increase in runners. We would also recommend a forecasting analysis of future race growth as a next step to help with budgeting, staffing, and purchase of supplies.
-
 
