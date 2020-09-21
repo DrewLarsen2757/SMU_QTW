@@ -1,0 +1,534 @@
+---
+title: "Cherry Blossom Analysis"
+author: "Matt Chinchilla, Rikel Djoko, Drew Larsen"
+date: "9/20/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=FALSE}
+library(XML)
+library(stringr)
+library(dplyr)
+library(tidyverse)
+library(corrplot)
+```
+
+
+### Business Case:
+The Credit Union Cherry Blossom Ten Mile Race is an annual road race that takes place in Washington D.C. . The race has been held since 1973 and during that time valuable race result data has been collected and is available on the race’s official website. The objective of this analysis is to extract race result data for female runners between the years of 1999 to 2012, a total of 14 years. Using this data, we hope to be able to help race planners gain new insight into patterns and trends as they relate to female runners of the race. 
+
+A few questions explored in this analysis include: Have age distributions changed over the years? Have race times increased or decreased both in total and by age groups for female runners. We will also look for trends and other insight within the data that may be valuable to bring to the attention of race planners. With a better understand of female participants race planners can make adjustments in routes, sponsorship outreach, and marketing that could help increase female participation and improve the overall race experience.
+
+### Data Extraction(Prep):
+To collect the necessary race data our team will be using software to extract the race results data published directly from the Cherry Blossom Ten Mile Race website. This technique is known as web scrapping and is widely used to collect data from the internet. The race results data published on the Cherry Blossom website is freely available to the public and there are no known restriction to either collecting (scrapping) this data or analyzing it. 
+
+The web scrapping process is a fairly straightforward one as it relates to this project. The website itself is constructed using Hypertext Markup Language or HTML. HTML is what is known as a markup language but put simply there are tags within HTML that give the web page it’s structure. In viewing the underlying HTML code, we can find the tags that encapsulate the data we are interested in. Once we know the relevant tags related to the content, we wish to scrape in this case race results we instruct our software to search through the websites HTML code find the tags we are interested in and scrape the data contained in the tags. This process is repeated for each web page of race results from 1999 to 2012 until all the raw race results data has been extracted. The next section will review how the raw data is then transformed to a usable state for analysis. 
+
+
+```{r}
+#Function to find the location of column names
+findColLocs = 
+  function(spacerRow)
+    {
+    spaceLocs = gregexpr(" ", spacerRow)[[1]] 
+    rowLength = nchar(spacerRow)
+    
+    if (substring(spacerRow, rowLength, rowLength) != "") 
+      return( c(0, spaceLocs, rowLength + 1)) 
+    else return(c(0, spaceLocs))  } 
+
+```
+
+
+```{r}
+#Function to select the columns for the final analysis
+selectCols =  function(colNames, headerRow, searchLocs)  {  
+  sapply(colNames,  function(name, headerRow, searchLocs) 
+  {  startPos = regexpr(name, headerRow)[[1]]  
+    if (startPos == -1)  return( c(NA, NA)) 
+  index = sum(startPos >= searchLocs) 
+  c(searchLocs[index] + 1, searchLocs[index + 1])  }, 
+  headerRow = headerRow, 
+  searchLocs = searchLocs) 
+  } 
+
+
+```
+
+
+```{r}
+#Function to convert time from %h:%m:%s to minutes. 
+parseTime = function(timePieces){
+if (length(timePieces) == 2) timePieces[1] + timePieces[2]/60
+else 
+60*timePieces[1] + timePieces[2] + timePieces[3]/60
+}
+convertTime = 
+function(useTime) {
+timePieces = strsplit(useTime, ":")
+timePieces = sapply(timePieces, as.numeric)
+sapply(timePieces, parseTime)
+}
+```
+
+
+```{r}
+#Function to create the final dataframe for analysis
+createDF =
+function(Res, year, sex)
+{
+# Determine which time to use
+useTime = if( !is.na(Res[1, 'net']) )
+Res[ , 'net']
+else if( !is.na(Res[1, 'gun']) )
+Res[ , 'gun']
+else
+Res[ , 'time']
+# Remove # and * and blanks from time
+useTime = gsub("[#\\*[:blank:]]", "", useTime)
+# Drop rows with no time
+Res = Res[ useTime != "", ]
+runTime = convertTime(useTime[ useTime != "" ])
+Results = data.frame(year = rep(year, nrow(Res)),
+sex = rep(sex, nrow(Res)),
+name = Res[ , 'name'],
+home = Res[ , 'home'],
+age = as.numeric(Res[, 'ag']),
+runTime = runTime,
+stringsAsFactors = FALSE)
+invisible(Results)
+}
+```
+
+
+```{r}
+#Function to extract variables from the full initial raw data
+extractVariables =
+function(file, varNames =c("name", "home", "ag", "gun",
+"net", "time"))
+{
+# Find the index of the row with =s
+
+eqIndex = grep("^===", file)
+# Extract the two key rows and the data
+spacerRow = file[eqIndex]
+file = file[grep('^#', file, invert = TRUE)]
+
+headerRow = tolower(file[ eqIndex - 1 ])
+body = file[ -(1 : eqIndex) ]
+# Obtain the starting and ending positions of variables
+searchLocs = findColLocs(spacerRow)
+locCols = selectCols(varNames, headerRow, searchLocs)
+Values = mapply(substr, list(body), start = locCols[1, ], stop = locCols[2, ])
+colnames(Values) = varNames
+invisible(Values)
+}
+```
+
+
+
+```{r}
+#URLS for scrapping data
+ubase = "http://www.cherryblossom.org/"
+
+#### From text
+F_URLs = 
+  c("results/1999/cb99f.html", 
+    "results/2000/Cb003f.htm", 
+    "results/2001/oof_f.html",
+    "results/2002/ooff.htm", 
+    "results/2003/CB03-F.HTM",
+    "results/2004/women.htm", 
+    "results/2005/CB05-F.htm", 
+    "results/2006/women.htm", 
+    "results/2007/women.htm", 
+    "results/2008/women.htm", 
+    "results/2009/09cucb-F.htm",
+    "results/2010/2010cucb10m-f.htm", 
+    "results/2011/2011cucb10m-f.htm",
+    "results/2012/2012cucb10m-f.htm")
+
+urls = paste(ubase,F_URLs, sep = "")
+
+years = 1999:2012
+```
+
+
+
+
+```{r}
+#Function to pull and parse inital data from the URLs
+extractResTable3 =  
+  #Retrieve data from web site, 
+  #find the preformatted text,  
+  #and return as a character vector.  
+  function(url, year)  {  
+    doc = htmlParse(url, encoding = 'latin1')      
+
+    
+    if (year == 2000) { 
+
+    #Get text from 4th font element 
+    #File is ill-formed so <pre> search doesn’t work.  
+    ff = getNodeSet(doc, "//font")  
+    txt = xmlValue(ff[[4]]) 
+    els = strsplit(txt, "\r\n")[[1]]  
+    }  
+    
+    else if (year == 1999) { 
+
+      # Get preformatted text from <pre> elements
+      pres = getNodeSet(doc, "//pre")
+      txt = xmlValue(pres[[1]])
+      els1 = strsplit(txt, "\n") 
+      els = els1[[1]]
+    } 
+      else if (year == 2011) { 
+      # Get preformatted text from <pre> elements
+      pres = getNodeSet(doc, "//pre")
+      txt = xmlValue(pres[[1]])
+      els1 = strsplit(txt, "\r\n") 
+      els = els1[[1]]
+    } 
+    
+  else {  
+
+  preNode = getNodeSet(doc, "//pre")  
+  txt = xmlValue(preNode[[1]]) 
+  els = strsplit(txt, "\r\n")[[1]]  
+  }  
+  return(els) 
+  } 
+
+```
+
+
+```{r, results='hide'}
+#Run extracResTable3 function and check character lenght count. Note: 1999 does not parse correctly the code chunk below this chunk will pull the 1999 data correctly.
+wTables3 = mapply(extractResTable3, url = urls, year = years)
+names(wTables3) = 1999:2012
+sapply(wTables3, length)
+```
+
+
+```{r, results= 'hide'}
+#2001, 2011 are problems
+#2001 error handling: no header
+table = extractVariables(wTables3$`2004`)
+wTables3$`2001`[3] = wTables3$`2002`[3]
+wTables3$`2001`[2] = wTables3$`2002`[2]
+table = extractVariables(wTables3$`2001`)
+head(wTables3$`2001`)
+```
+
+
+```{r, results='hide'}
+#2006 time handling. See analysis later
+wTables3$`2006`[8] = '===== ======== ====== ====================== == =============== ======= ======== ===== = '
+wTables3$`2006`[1:10]
+```
+
+Below are the character lengths scrapped from the website for each year.
+```{r}
+#Applying the extract varaiables function to the raw data 
+womenResMat = lapply(wTables3, extractVariables)
+sapply(womenResMat, nrow)
+```
+
+Below is an example of the scrapped raw data.
+```{r}
+writeLines(wTables3$`2001`[1:10])
+```
+
+### Data Extraction (Execution):
+Raw data extraction: After separating the data into individual rows, we had to extract the variables from the raw data. We use the headers at the top and the row with the equal signs to guide our data extraction. For most years, the breaks in the row of equal signs correspond to a new variable. We use the extract variables function below to create matrices from the raw data. The function takes the raw data that is separated by row, finds the locations of the breaks in the row with the equal signs, and uses that location as a guide where to split every line in the raw data into a new variable. These variables are then named using the header row above the equal sign line. We found that year 2001 did not have a header row but did have the equal sign separator. 2002 and 2001 had the same header row structure, so we copy the header row from 2002 and use it for 2001. 2011 had a problem initially with parsing using UTF-8. Changing the htmlParse function in the extractResTable3 function to have encoding = 'latin1' solved the problem. It was also found that 2006 did not have a separation in the equal sign row between location and time, so we manually changed an equal sign to a space in the row so our function would automatically separate these variables. Our extractVariables function was successfully run on all raw data objects and outputted a list of individual matrices for each year. 
+
+### Clean up: 
+After extracting raw results, the data needed significant amounts of cleaning. There were NA's and outliers all over the place. We had to assign header names and change data types. Header names were addressed in our extractVariables function, and the remaining variables are ("name", "home", "ag", "gun", "net", "time"). Name is the name of the runner, home is their home location, ag is their age, gun is their gun time (if applicable), net is their net time (if applicable) and time is their race time (if applicable). If we have a net time variable, we use that to calculate time in the final dataframe. If we have a gun time variable but no net time variable, we use that to calculate time in the final dataframe. If we don't have a gun or net time but we have a time variable, we use that to calculate time in the final dataframe. After addressing header names, we changed the age variable to numeric. We had to do some data parsing to change the time variable to numeric as well: the data came in as hours:minutes:seconds. We were interested in analyzing the time variable in terms of minutes, so we multiplied hours by 60, divided seconds by 60 and kept the minutes, and added those 3 variables together to get total minutes. This result was then turned into a numeric variable
+
+### Missing values and outliers: 
+There were outliers and NA values in both of our numeric columns: age and time. These needed to be dealt with. Looking at box plots, it was clear that 2003 was definitely an issue, and 2009, 2001 and 2011 could potentially be issues with young runners. To deal with 2003, we found that the age column fluctuated by a column in either direction as we went down the raw data. Increasing the search by 1 column for the age variable solved the issue with 2003 and 2011. In 2001, there was a racer with an age of 0. When we went back and looked at the raw data, it was found that this racer was listed as 0, so we just removed this racer from the data. In 2011, there was a racer that was 7 years old. This was confirmed in the raw data. While the racer was young, it was determined that it was possible for a 7-year-old to run a 10-mile race, so the data point was kept. There were still a few outliers in the data frame, but those were kept in there for analysis in our EDA. Now that we dealt with NA's and outliers in the age variable, we decided to look at the time variable. Stars and hashtags in the time variable were messing up our multiplication initially. Removing those in the initial time calculation function removed a significant amount of NA's in many years. There were still NA's in 2002 and 2006. 2006 had times that were in the location variable. It was determined that the data wasn't being parsed correctly due to a missing break in the equal sign row. The break was manually inputted, which fixed the NA's in 2006. The one remaining NA in 2002 was a footer line, which was removed. Looking at box plots of the run times by year, nothing stood out as problematic in terms of outliers, so we proceed with our analysis.
+
+
+```{r, include= FALSE}
+#Data cleaning!
+#Initial analysis: 2003 is clearly an issue. 2001 might be an issue with young people racing. 2009 and 2011 are questionable. Lets start with 03. Looking at the actual website, the #age moves around quite a bit. We expand the age search to 1 more column, which fixes the dataframe. 
+age = sapply(womenResMat,function(x) as.numeric(x[ , 'ag']))
+boxplot(age, ylab = "Age", xlab = "Year")
+```
+
+```{r, results='hide'}
+#Our 2003 fix seemed to help 2011 as well. 2001 and 2009 are still potential problems. It looks like many of the NA's are the result of people not entering their age, or rows that are header/footer rows.  After removing header/footer rows, it looks like there are still a few NA's per year. Examining the worst of these years, 2005, it seems like all the NA's are actually missing ages for the people that ran. We'll keep them in for now but in our age analysis we will remove them. 
+
+sapply(age, function(x) sum(is.na(x)))
+age1999 = age[["2005"]]
+header = grep("^===", wTables3[['2005']])
+badAgeIndex = which(is.na(age1999)) + header
+badAgeIndex
+wTables3[['2005']][ badAgeIndex ]
+```
+
+```{r, results='hide'}
+#2009 and 2001 have low ages. There is only one low age in each of the dataframes, so I think it's worth it just to treat these as outliers and replace their age with what is listed on the website. In this case, #2611 in 2001 was listed as 0 and #6619 in 2009 was listed as 7, and she ran a 2 hour race. Why can't a 7 year old run a 2 hour 10 mile race? We'll keep it in the data.
+
+age2001 = age$`2001`
+which(age2001 < 10)
+age2009 = age$`2009`
+which(age2009 < 10)
+eqIndex09 = grep("^===", wTables3[['2009']])
+eqIndex01 = grep("^===", wTables3[['2001']])
+womenResMat[['2001']][ which(age2001 < 10), ] 
+womenResMat[['2009']][ which(age2009 < 10), ] 
+wTables3[['2001']][ which(age2001 < 10) + eqIndex01 ] 
+wTables3[['2009']][ which(age2009 < 10) + eqIndex09 ] 
+womenResMat$`2001` = womenResMat$`2001`[-c(2611),]
+```
+
+
+```{r, include= FALSE}
+#Double checking the boxplot to make sure all the ages look good. They do. We can proceed and look at the time variable. 
+age = sapply(womenResMat,function(x) as.numeric(x[ , 'ag']))
+boxplot(age, ylab = "Age", xlab = "Year")
+```
+
+```{r, include= FALSE}
+
+#Time AnalysisWhen trying to apply the createDF function to the women data, we get a bunch of NA's. What's going on?
+womendf = mapply(createDF, womenResMat, year = 1999:2012, sex = rep('F', 14), SIMPLIFY = FALSE)
+
+```
+
+```{r, results='hide'}
+#Looks like we run into some issues converting time. Let's remove stars and hashtags from the time columns. 
+sapply(womendf, function(x) sum(is.na(x$runTime)))
+```
+
+```{r, results='hide'}
+# After removing stars and hashtags, it looks like we have one left in 2002 and a few more in 2006. 
+womendf = mapply(createDF, womenResMat, year = 1999:2012, sex = rep('F', 14), SIMPLIFY = FALSE)
+sapply(womendf, function(x) sum(is.na(x$runTime)))
+```
+
+```{r, results='hide'}
+#It's a footer line. We can go ahead and remove it. 
+womendf$`2002`[is.na(womendf$`2002`$runTime),]
+womendf$`2002` = womendf$`2002`[-c(3335),]
+```
+
+```{r, results='hide'}
+#Alright, now we're left with a ton of NA's in the 2006 dataframe. 
+sapply(womendf, function(x) sum(is.na(x$runTime)))
+```
+
+
+```{r, include= FALSE}
+#It looks like the time is in the home column because there's no break in the = signs between hometown and net time. Space #64 needs to be turned into a blank. 
+time = sapply(womendf,function(x) as.numeric(x[ , 'runTime']))
+boxplot(time, ylab = "time", xlab = "Year")
+```
+
+```{r, include= FALSE}
+#Runtimes look normal. 
+time = sapply(womendf,function(x) as.numeric(x[ , 'runTime']))
+boxplot(time, ylab = "time", xlab = "Year")
+```
+
+```{r, results='hide'}
+#Final NA check, some are left in the age column. 
+sapply(womendf, function(x) sum(is.na(x)))
+
+womendf$`2006`[which(is.na(womendf$`2006`$runTime)),]
+womenResMat$`2006`[which(is.na(womendf$`2006`$runTime)),]
+
+```
+ 
+```{r, include=FALSE}
+#Create a full single dataframe with all data with year and sex as added columns.
+womendf
+nawomendf = lapply(womendf, function(x) na.omit(x))
+class(nawomendf)
+
+fullwomendf = do.call(rbind, womendf)
+fullwomendf
+```
+
+### Data Description
+
+Below are high level summary statistics of our overall data
+```{r}
+str(fullwomendf)
+
+```
+
+```{r}
+summary(fullwomendf)
+
+```
+
+**Distribution of times:** 
+From the runTime distribution below we can see that the runtime is normally distributed from 1999-2012. This means that the expected female runtime is around 98 Min.
+The histogram below shows the overall distribution of female runner times.
+```{r}
+
+df = na.omit(fullwomendf)
+df$year <- as.factor(df$year)
+hist(df$runTime, xlab = 'Time(minutes)', main = 'Distribution of time, Female Runners', col = 'blue', breaks = 10)
+```
+**Age Distribution:**
+From the age distribution above we can see the participant's age goes from 10 to 70 and most of the participant are between 20-40. the data is skew to the right so we have some other participant form 40 to 60
+```{r}
+hist(df$age, xlab = 'Age', main = 'Distribution of age across Female Runners', col = 'red', breaks = 10)
+```
+**Scatterplot:** 
+The scatter plot above across year doesn't show any particular linear trend but show a big cluster which tell us year by year the most of the participant are between age 25 and 50 and runtime are between 75 and 125 min.
+```{r}
+#A basic scatterplot with color depending on Species
+ggplot(df, aes(x=age, y=runTime, color=year)) + geom_point(size=1)
+
+```
+
+**Correlation Plot:** 
+The correlation plot between the age and runTime, confirmed on the idea of weak correlation between the two variable
+```{r}
+#dot correlation
+data_num <- select_if(df, is.numeric) 
+correlations <- cor(select_if(df, is.numeric))
+corrplot(correlations, method="circle")
+
+```
+**Bar Plot of # of people per race:** 
+As you can see from the plot above the number of participant increase every year, from 1999 to 2012 we have almost 4X the number of participant from 2500 to 10000.
+```{r}
+ggplot(df, aes(year)) +  geom_bar(fill = "#0073C2FF")
+
+```
+**Scatterplot of runtime vs. age, not colored:**
+From the plot above we can see there's not a clear linear trend or correlation between the age and the runtime. but confirm on the big cluster.
+```{r}
+ggplot(df, aes(x=age, y=runTime)) +  geom_point() +  geom_smooth(method=lm , color="red", fill="#69b3a2", se=TRUE)
+```
+
+# Business Analysis
+
+### Analysis: Have the ages of runners changed over the years?
+**Through the analysis below we have come to the conclusion that there is a statistically significant decrese in age over time. The mean age seemed to float around 35 for 1999 - 2002, then drop down to 34ish for 2004 and 2005, then drop down below 34 for 2006 - 2010, bottoming out at 33.07 in 2009. The age then begins to come back up in 2010, 2011 and 2012, where the mean age is 33.88. Is a difference of a year or two different enough to make differences to the race structure? We expect 2013 to have a mean age between 33.5 - 34. **
+
+Looking at the violin below, there isn't a lot of evidence that the mean age has changed year over year. We will run a more formal analysis to see if this is true or not.
+
+```{r}
+#get just age relevant data gather into a df
+age_df <- fullwomendf %>% select(year,name,home,age)
+
+#remove NA values in age
+age_df <- na.omit(age_df)
+
+#Change year into a factor
+age_df$year <- as.factor(age_df$year)
+
+#plot
+p_age <- ggplot(age_df, aes(x=year, y = age)) +geom_violin() + geom_boxplot(width = .1) + stat_summary(aes(y = age,group=year), fun.y=mean, colour="red", geom="line",group =1) +ggtitle("Plot of Age distribution over 14 Year period 1999-2012")
+
+t <- theme(
+  panel.background = element_rect(fill = "lightblue",
+                                colour = "lightblue",
+                                size = 0.5, linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                colour = "white")
+  )
+
+s <- scale_y_continuous(name = 'Age', breaks = c(10,20,30,40,50,60,70,80,90,100))
+
+
+p_age +s+ t 
+mean(age_df$age)
+median(age_df$age)
+```
+
+We are interested in running an ANOVA test to see if there is a statistical difference between the mean age in any year. First, we look at assumptions. The 3 assumptions are that the observations are independently and randomly drawn from the population, the data is normally distributed in each year, and the populations have a common variance. Looking at the boxplot above, the data visually look to have a common variance, but there does seem to be a skew toward higher values in these distributions. I don't think ht's enough of a right skew to be a problem, so we continue as if the populations are normal. As far as independence goes, we know that the populations have gotten larger as time has gone on, but I don't think that the age distribution of one race would depend on the age distribution of another. Also, these data were not randomly chosen from a population, but due to the nature of the data (the population of the ages of people running the race each year), it wouldn't make sense to do a random selection technique. Therefore, I think we can run an ANOVA test in order to compare these year's distribution of age. 
+```{r}
+model = aov(age ~ year, data = fullwomendf)
+summary(model)
+```
+Using our ANOVA test, it appears that there is a statistical significant difference in the mean age per year. Which years?
+We use the Bonferroni correction for multiple comparisons. Bonferroni was chosen due to it being a fairly conservative test: we want to make sure that the ages are different and the difference between ages in each year isn't due to us running many tests. It seems that the further the year is away, the more likely that the year has a significantly different age. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$age, fullwomendf$year, p.adjust.method = 'bonferroni', alternative = 'two.sided')
+tmodel
+```
+We ran the first analysis to find where differences were. This analysis looks at which years have higher ages. It looks like the ages aren't getting higher over time. The only statistically significant times where age got higher as year got higher is comparing 2008 to 2011 and 2012, 2009 to 2011 and 2012, and 2010 to 2012. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$age, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'greater')
+tmodel
+```
+Typically, it looks like age gets younger or stay the same as we move into the future. The outliers here is that 2011 and 2012 seem to have gotten older compared to 2008, 2009 and 2010. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$age, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'less')
+tmodel
+```
+We have statistically significant differences, but are the differences practical? The mean age seemed to float around 35 for 1999 - 2002, then drop down to 34ish for 2004 and 2005, then drop down below 34 for 2006 - 2010, bottoming out at 33.07 in 2009. The age then begins to come back up in 2010, 2011 and 2012, where the mean age is 33.88. Is a difference of a year or two different enough to make differences to the race structure? I expect 2013 to have a mean age between 33.5 - 34. 
+```{r}
+na.omit(fullwomendf) %>% group_by(year) %>% summarize(age = mean(age))
+```
+
+### Analysis: Have the times of runners changed over the years?
+**Through the analysis below we have come to the conclusion that there is a statistically significant increase in time as years have increased but given this increase is only 42 seconds per-mile across the largest variances we do not think that in a practical sense the change is significant enough to warrant any structural changes to the race.**
+
+
+Looking at the violin plots below, it doesn't look as if run time has changed over time. We run a more formal statistical analysis to check if times have changed statistically. 
+```{r}
+time_df <- fullwomendf %>% select(year,name,home,runTime)
+
+#remove NA values in age
+time_df <- na.omit(time_df)
+
+#Change year into a factor
+time_df$year <- as.factor(time_df$year)
+
+#plot
+p_time <- ggplot(time_df, aes(x=year, y = runTime)) +geom_violin() + geom_boxplot(width = .1) + stat_summary(aes(y = runTime,group=year), fun.y=mean, colour="red", geom="line",group =1) + ggtitle("Run Time distribution over 14 year period 1999 - 2012")
+
+
+
+s2 <- scale_y_continuous(name = 'Run Time in min.', breaks = c(50,60,70,80,90,100,110,120,130,140,150,160,170,180,190,200))
+
+p_time +s2 
+mean(time_df$runTime)
+median(time_df$runTime)
+```
+
+We are interested in running an ANOVA test to see if there is a statistical difference between the mean age in any year. First, we look at assumptions. The 3 assumptions are that the observations are independently and randomly drawn from the population, the data is normally distributed in each year, and the populations have a common variance. Looking at the boxplot above, the data visually look to have a common variance. There may have been a slightly smaller variance in early years, but I think that has more to do with the 5-10 longest times in later years being fairly high. Looking at the size of the whiskers in the box plot, they look to be fairly constant over the years. Next we look at normality. The distributions appear to be normal, aside from some rather large outliers. The 5-10 longest times wouldn't have a huge effect on the shape of the distribution, since our sample sizes per year is in the thousands. As far as independence goes, we know that the populations have gotten larger as time has gone on, but I don't think that the time distribution of one race would depend on the time distribution of another. Also, these data were not randomly chosen from a population, but due to the nature of the data (the population of the times of people running the race each year), it wouldn't make sense to do a random selection technique. Therefore, I think we can run an ANOVA test in order to compare these year's distribution of times. 
+```{r}
+model = aov(runTime ~ year, data = fullwomendf)
+summary(model)
+```
+There is a statistically significant difference in the mean run time of at least one of the years. Which years? It looks like many years have statistically different times. This is a two sided test, so we are not sure if times have gotten larger or smaller, just that they're different. Now that we know they have changed in many years, we want to know how they have changed. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$runTime, fullwomendf$year, p.adjust.method = 'bonferroni', alternative = 'two.sided')
+tmodel
+```
+Looking into the future, it seems that in general, times have gotten larger. Comparing 1999 to future years, all years from 2004 - 2012 have a statistically significant increase in run time. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$runTime, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'greater')
+tmodel
+```
+Looking at years where run time has decreased as we look into the future, only 2000 is less than 1999, 2007 is less than 2005 and 2006, and 2012 is less than 2010 and 2011. The trend seems to be an increasing mean time as we move into the future, aside from 2000, 2007 and 2012 being slight outliers. 
+```{r}
+tmodel = pairwise.t.test(fullwomendf$runTime, fullwomendf$year, p.adjust.method = 'bonferroni', alternative =  'less')
+tmodel
+```
+We know that there is a statistically significant increase in mean run time as years increase. Is there a practical difference? The lowest mean run time is about 94 minutes in 2000, while the longest mean run time is about 100 minutes in 2011. In a ten mile race, that is a mean increase of 42 seconds per mile. Is that a big enough difference to make changes in your race, considering that change occurred over 11 years? I expect 2013 to have a mean run time between 99 and 100 minutes for the 10 mile race. 
+```{r}
+na.omit(fullwomendf) %>% group_by(year) %>% summarize(runTime = mean(runTime))
+```
+
+# Conclusion
+
+Based on our analysis of age and runner time we see statistically significant differences in both time and age but we do not believe that the differences are large enough to recommend or warrant any major changes to the Cherry Blossom 10 mile Race. We would recomend that given more time further anlysis of runner home town/location could highlight new insights into questions such as where are most of the runners from, what countries are represented, and how popular is the race internationally. As we have seen in the summary data the race itself is increasing in participation and has grown by more than 500 participants a year over the 14 year period from 1999 to 2012. We would recomend that based on the growth in popularity of the race considerations should be taken to add more facilites, water and water stations, gear/givaways, and make sure that any concessions are approriatly stocked for the increase in runners.
+
+
