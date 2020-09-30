@@ -1,0 +1,88 @@
+---
+title: "Spam detector"
+author: "Matt Chinchilla, Rikel Djoko, Drew Larsen"
+date: "9/29/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=FALSE}
+library(XML)
+library(stringr)
+library(dplyr)
+library(tidyverse)
+library(corrplot)
+library(rpart)
+```
+
+
+### Exploratory Data Analysis:
+
+```{r, include=True}
+setwd("C:/Users/radjoko/Downloads/DS 7333-QTW/week 5-6")
+getwd()
+#load the rda file
+data <- load(file = "data.Rda")
+head(data)
+head(emailDFrp)
+```
+```{r, include=True}
+### data dimension
+dim(emailDFrp)
+```
+
+```{r, include=True}
+### summary statistic ####
+summary(emailDFrp)
+```
+```{r, include=True}
+### data feature
+colnames(emailDFrp)
+```
+```{r, include=True}
+### data dimension description
+str(emailDFrp)
+```
+```{r, include=True}
+### Checking for NA value
+print(paste0("number of missing value: ", sum(is.na(emailDFrp))))
+```
+```{r, include=True}
+###Plot distribution of email vs spam
+ggplot(emailDFrp, aes(x=isSpam)) +
+  geom_bar(fill = "#0073C2FF")+
+  ggtitle("Figure 1: Spam vs. Non-Spam Split")
+```
+```{r, include=True}
+#### plot relationship with spam  and other categorical variable
+ggplot(data = emailDFrp) +
+  geom_count(mapping = aes(x = isSpam, y = isRe))+
+  ggtitle("Spam vs. isRe count")
+```
+```{r, include=True}
+#### plot relationship with predictor and other categorical variable
+ggplot(data = emailDFrp) +
+  geom_count(mapping = aes(x = isSpam, y = priority))+
+  ggtitle("Spam vs. mail priority count")
+```
+```{r, include=True}
+# Count Observations by Two Groups
+emailDFrp  %>%
+  count("priority", "isSpam")
+```
+
+```{r, include=True}
+# #dot correlation
+data_num <- select_if(emailDFrp , is.numeric)   
+correlations <- cor(select_if(emailDFrp , is.numeric))
+corrplot(correlations, method="circle")
+
+```
+
+
+
