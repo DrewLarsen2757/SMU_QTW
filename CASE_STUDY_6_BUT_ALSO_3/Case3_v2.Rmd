@@ -1,0 +1,123 @@
+---
+title: "Case3_v2"
+author: "Matt Chinchilla"
+date: "9/30/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE,dev = 'pdf')
+```
+
+```{r library, include=FALSE}
+library(tidyverse)
+library(randomForest)
+library(caret)
+```
+
+```{r load data, include=FALSE}
+#read in data
+load("~/Desktop/SMU/Quantifying TW/SMU_QTW/case3/Week_5_files/data.Rda")
+```
+
+```{r Clean up #1 look for NA, include=FALSE}
+# look for NA values
+emailDFrp %>% select(everything()) %>% summarise_all(funs(sum(is.na(.))))
+
+# remove N/A values
+emailDF_dropNA <- emailDFrp %>% na.omit()
+
+emailDF_dropNA %>% select(everything()) %>% summarise_all(funs(sum(is.na(.))))
+```
+
+```{r split_data_1, include=FALSE}
+#stratified split #1 from the entire data set we are splitting off a 20% as a final validation set to verify our model. The other 80% of the data will be used for training the random forest model
+set.seed(30)
+
+inTrain <- createDataPartition(
+  y= emailDF_dropNA$isSpam,
+  p = .80,
+  list = FALSE
+)
+
+
+training_test <- emailDFrp[inTrain,]
+testing_final <- emailDFrp[-inTrain,]
+
+nrow(training_test)
+nrow(testing_final)
+
+```
+
+```{r split_data_2, include=FALSE}
+#stratified split #2 We are now spliting our training data into the training and test split needed for a basic random forest model. 
+
+set.seed(30)
+
+inTrain <- createDataPartition(
+  y= training_test$isSpam,
+  p = .70,
+  list = FALSE
+)
+
+training <- training_test[inTrain,]
+testing <- training_test[-inTrain,]
+
+nrow(training)
+nrow(testing)
+
+```
+
+
+```{r}
+# create baseline random forest model
+#training_roughfix <- na.roughfix(training)
+rf_baseline <- randomForest(isSpam ~., data = training, ntree = 100, importance=TRUE, na.action = na.roughfix)
+rf_baseline
+```
+
+Assess most important variables used by plotting mean Decrease Accuracy and GINI charts. We will first attempt to remove variables with low importance. The top 15 variables in each list seem to be our best predictors we then settle on 18 variables that are a combination of the top 15 found in both charts and the outliers that are unique in the top 15 of each chart. 
+
+```{r, fig.dim=c(8,6)}
+
+#Can we improve our baseline model by omitting low value variables?
+varImpPlot(rf_baseline, cex = .7, main = "Variable Importance",pt.cex = 1,color = 'red',frame.plot = FALSE,lcolor = 'black')
+
+```
+
+MeanDecreaseAccuracy: gives a rough estimate of the loss in prediction performance when that particular variable is omitted from the training set.
+
+MeanDecreaseGini: GINI is a measure of node impurity. Think of it like this, if you use this feature to split the data, how pure will the nodes be? Highest purity means that each node contains only elements of a single class. Assessing the decrease in GINI when that feature is omitted leads to an understanding of how important that feature is to split the data correctly.
+
+```{r remove_lowImportance_Vars, include=FALSE}
+training_v2 <- subset(training, select = c(isSpam,perCaps,perHTML,subExcCt,avgWordLen,subBlanks,isDear,numEnd,subSpamWords,bodyCharCt,numLines,hour,forwards,isYelling,numDlr,numRec,bodyCharCt,isInReplyTo,isRe))
+
+testing_v2 <- subset(testing, select = c(isSpam,perCaps,perHTML,subExcCt,avgWordLen,subBlanks,isDear,numEnd,subSpamWords,bodyCharCt,numLines,hour,forwards,isYelling,numDlr,numRec,bodyCharCt,isInReplyTo,isRe))
+
+```
+
+
+
+```{r}
+# create baseline random forest model this model is only using top 18 variables
+rf_baseline_v2 <- randomForest(isSpam ~., data = training_v2, ntree = 100, importance=TRUE, na.action = na.roughfix)
+rf_baseline_v2
+varImpPlot(rf_baseline_v2)
+```
+
+```{r}
+#try using v2 model to predict on testing set
+y <- testing_v2$isSpam
+testing_v2$isSpam <- NULL
+preds <-predict(rf_baseline_v2,testing_v2)
+confusionMatrix(preds,y)
+```
+
+```{r}
+y2 <- testing_final$isSpam
+
+tf_v2 <- subset(testing_final, select = c(perCaps,perHTML,subExcCt,avgWordLen,subBlanks,isDear,numEnd,subSpamWords,bodyCharCt,numLines,hour,forwards,isYelling,numDlr,numRec,bodyCharCt,isInReplyTo,isRe))
+
+preds2 <-predict(rf_baseline_v2,tf_v2)
+confusionMatrix(preds2,y2)
+```
