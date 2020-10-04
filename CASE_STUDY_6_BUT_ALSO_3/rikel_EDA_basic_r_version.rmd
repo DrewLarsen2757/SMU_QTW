@@ -77,12 +77,83 @@ emailDFrp  %>%
 ```
 
 ```{r, include=True}
-# #dot correlation
-data_num <- select_if(emailDFrp , is.numeric)   
-correlations <- cor(select_if(emailDFrp , is.numeric))
-corrplot(correlations, method="circle")
+# #pair count correlation
+emailDFrp %>% 
+  count(isInReplyTo, isSpam) %>%  
+  ggplot(mapping = aes(x = isInReplyTo, y = isSpam)) +
+    geom_tile(mapping = aes(fill = n))
+```
+
+```{r, include=True}
+ # #pair count correlation
+emailDFrp %>% 
+  count(isRe, isSpam) %>%  
+  ggplot(mapping = aes(x = isRe, y = isSpam)) +
+    geom_tile(mapping = aes(fill = n))
 
 ```
 
+######################################## building tree####
+```{r, include=True}
+# split variable data
+ set.seed(2568)
+ n <- nrow(emailDFrp)
+ train <- sort(sample(1:n, floor(n/2)))
+ train_df <- emailDFrp[train,]
+ 
+ # negate the indices to get the test data:
+ test_df <- emailDFrp[-train,]
 
+```
 
+```{r, include=True}
+# build rpart tree see parameter description:  #https://www.rdocumentation.org/packages/rpart/versions/4.1-15/topics/rpart.control
+# example parameter: 
+
+email.rp <-rpart(isSpam ~ . ,                         # formula: . means all
+                 data = emailDFrp,                       # data frame
+                 subset = train,                       # indices of training set
+                 method = "class",                     # classification tree
+                 parms = list(split = "information"),  # use entropy/deviance
+                 usesurrogate = 2,                     # since having  missing values
+                 maxsurrogate = 1,  
+                 cp = 0.1,                               # no size penalty
+                 minsplit = 5,                         # Nodes of size 5 (or 
+                 # more) can be split,
+                 minbucket = 2,                        # provided each sub-node
+                 # contains at least 2 obs.
+ )
+ summary(email.rp)
+```
+```{r, include=True}
+# plot tree
+ #newwindow()
+ plot(email.rp, 
+      uniform=TRUE,
+      compress=TRUE,
+      margin = .2)
+ text(email.rp, 
+      use.n=TRUE, 
+      all = TRUE,
+      fancy = TRUE)
+
+```
+
+```{r, include=True}
+ # plot tree https://www.gormanalysis.com/blog/decision-trees-in-r-using-rpart/
+ #newwindow()
+ library(rattle)
+ library(rpart.plot)
+ library(RColorBrewer)
+ 
+ # plot tree
+ fancyRpartPlot(email.rp, caption = NULL)
+
+```
+
+```{r, include=True}
+ # Tree acccuracy (confusion matrix)
+predict_validation<- predict(email.rp, newdata = test_df)
+m_ct<-confusionMatrix(predict_validation,test_df$isSpam)
+m_ct$cm_ct$overall['Accuracy']
+```
