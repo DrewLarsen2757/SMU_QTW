@@ -31,10 +31,22 @@ data <- load(file = "data.Rda")
 head(data)
 head(emailDFrp)
 ```
+### Data Description
+
+The dataset is made up of a corpus of emails from SpamAssassin.org (Apache 4). In total, there are 9348 unique emails. It contains 29 predictor variables and one response variable named isSpam. Of the 30 total variables, 17 are boolean factor variables and the remaining 13 variables are numeric variables. Our goal is to the existing email previously classified  to classify future incoming email based on the value of the predictor variable. See table below for the list of the variable
+```{r, include=True}
+### data dimension description
+str(emailDFrp)
+```
+
+
 ```{r, include=True}
 ### data dimension
 dim(emailDFrp)
 ```
+
+
+
 
 ```{r, include=True}
 ### summary statistic ####
