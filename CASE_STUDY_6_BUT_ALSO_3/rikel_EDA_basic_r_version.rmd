@@ -60,10 +60,12 @@ colnames(emailDFrp)
 ### data dimension description
 str(emailDFrp)
 ```
+
 ```{r, include=True}
 ### Checking for NA value
 print(paste0("number of missing value: ", sum(is.na(emailDFrp))))
 ```
+The evaluation of the dataset found 357  missing observations.Rather than doing a preliminary imputation we will let the random forest method to take care of those missing numeric and categorical predictor variables.
 ```{r, include=True}
 ###Plot distribution of email vs spam
 ggplot(emailDFrp, aes(x=isSpam)) +
