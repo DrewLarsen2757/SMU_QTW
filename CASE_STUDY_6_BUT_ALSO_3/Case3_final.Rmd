@@ -1,0 +1,387 @@
+---
+title: "Case 3"
+author: "Matt Chinchilla, Drew Larsen, Rikel Djoko"
+date: "10/4/2020"
+output: word_document
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+
+```{r}
+knitr::knit_hooks$set(time_it = local({
+  now <- NULL
+  function(before, options) {
+    if (before) {
+      # record the current time before each chunk
+      now <<- Sys.time()
+    } else {
+      # calculate the time difference after a chunk
+      res <- difftime(Sys.time(), now)
+      # return a character string to show the time
+      paste("Time for this code chunk to run:", res)
+    }
+  }
+}))
+```
+
+```{r library, include=FALSE, warning=FALSE}
+library(tidyverse)
+library(randomForest)
+library(caret)
+library(knitr)
+library(kableExtra)
+library(XML)
+library(stringr)
+library(dplyr)
+library(corrplot)
+library(rpart)
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+library(dplyr)
+library(ggraph)
+library(igraph)
+ 
+```
+
+```{r load data, include=FALSE}
+#read in data
+load("~/Desktop/SMU/Quantifying TW/SMU_QTW/case3/Week_5_files/data.Rda")
+
+#set random seed
+seed = 30
+```
+
+# Business Understanding 
+
+Email is a service that has all but replaced traditional mail in the 21st century. Unfortunately, junk mail, called spam mail in the context of email, has filled inboxes as email becomes more ubiquitous. Spam mail is significantly cheaper to send than junk mail, so there is very little stopping advertisers from sending spam emails to as many people as possible. Spam mail can range from mostly harmless advertising to phishing or malware links. The range of outcomes from clicking a spam link requires a system to properly identify spam. A human educated about spam mail can often spot spam emails at a glance, but what about a less tech savvy operator? An automated system to detect spam mail can be used to unclutter inboxes and help protect those who have trouble identifying spam mail. 
+
+In this analysis, we will create an automated system to identify spam emails using machine learning. More specifically, we will use information about the email such as the number of characters in the body, whether the email a reply email, if the email body has images, among other characteristics. Using the extracted information, we create a tree based model in order to detect if an email is spam. Since we were given the data and did not perform the data extraction ourselves, we are assuming that the data extraction was done in a robust manner. The following analysis is only as robust as the data that we were provided. 
+
+ 
+# Data Evaluation and Engineering
+
+### Data Description
+
+The dataset is made up of a corpus of emails from SpamAssassin.org (Apache 4). In total, there are 9348 unique emails. It contains 29 predictor variables and one response variable named isSpam. Of the 30 total variables, 17 are boolean factor variables and the remaining 13 variables are numeric variables. Our goal is to the existing email previously classified  to classify future incoming email based on the value of the predictor variable. See table below for the list of the variable.
+
+
+
+Below output below is the structure of the data that we will be using.
+```{r, include=TRUE}
+### data dimension description
+str(emailDFrp)
+```
+
+
+The evaluation of the data set found 357  missing observations.Rather than doing a preliminary imputation we will let the random forest method to take care of those missing numeric and categorical predictor variables.
+
+```{r, include=TRUE}
+### Checking for NA value
+print(paste0("number of missing value: ", sum(is.na(emailDFrp))))
+```
+
+The Figure 1: show the distribution of spam vs not spam email in our dataset. We can clearly see the number of not spam is 3 X the number of spam.
+```{r, include=TRUE}
+###Plot distribution of email vs spam
+ggplot(emailDFrp, aes(x=isSpam)) +
+  geom_bar(fill = "#0073C2FF")+
+  ggtitle("Figure 1: Spam vs. Non-Spam Split")
+```
+
+The Figure 2: show the pairwise distribution between isSpam and isRe, as we expected most of the of spam are not read and very few of the spam are read.
+```{r, include=TRUE}
+#### plot relationship with spam  and other categorical variable
+ggplot(data = emailDFrp) +
+  geom_count(mapping = aes(x = isSpam, y = isRe))+
+  ggtitle("Figure 2: Spam vs. isRe count")
+```
+
+The Figure 3 : show the pairwise distribution between isSpam and Priority level, We can clearly see the priority classification is barely used  across spam and not spam.
+
+```{r, include=TRUE}
+#### plot relationship with predictor and other categorical variable
+ggplot(data = emailDFrp) +
+  geom_count(mapping = aes(x = isSpam, y = priority))+
+  ggtitle("Figure 3: Spam vs. mail priority count")
+```
+The Figure 4 : show the pairwise distribution between isSpam and isInReplyTo, we can see that most on aren't replied.
+
+
+```{r, include=TRUE}
+# #pair count correlation
+emailDFrp %>% 
+  count(isInReplyTo, isSpam) %>%  
+  ggplot(mapping = aes(x = isInReplyTo, y = isSpam)) +
+    geom_tile(mapping = aes(fill = n)) + ggtitle("Figure 4: Pairwise isSpam vs isInReplyTo")
+```
+
+# Modeling Preperation
+
+As stated in the Business Understanding, we will be using a tree based algorithm in order to determine whether an email is spam or not. Decision trees are fairly useful for binary classification problems. The direction an observation flows through the tree structure is determined by decision nodes. If the decision node is based on a binary variable, the observation flows right or left based on the value of the variable for the observation. If the decision node is based on a continuous variable, the observation flows right or left based on if the observation’s value is above or below a certain threshold. The tree model has a binary structure and is a non-parametric model, so the variables used in the model don’t need to follow any distribution. This makes a tree model extremely useful for binary classification problems such as this one. 
+
+In order to find the “best” decision tree, you need to test every possible tree for the model. In order to avoid testing every possible tree, we decided to leverage the random forest model. The random forest takes a number of decision trees, which each make a decision if the email is “spam” or “ham”. If enough of trees classify the email as “spam”, then the email is classified as spam. If the number of trees classifying the email as spam is below a certain threshold, then we classify the email as ham. Utilizing random forest allows us to test fewer trees in the model creation step and allows us to have a more robust model. What makes these forests “random” is how variables are chosen. In our model call, we specify how many variables are randomly chosen for each tree. This allows for many different trees to be created, instead of many similar trees with the same variables. In order to aid our ability to interpret these models we are going to set the maximum number of final nodes allowed per-tree in our Random forest to 10. Doing this will allow us to interpret the final model and how the tree's are being classified using each data point.
+
+To determine the best model, we are using a few evaluation metrics. Accuracy, which is the number of correct predictions divided by the number of total observations, is important, but it doesn’t necessarily tell the entire story. It is important to minimize the number of false positives, but a large number of false negatives is more problematic. It is a bigger problem to classify a real email as spam, rather than classifying a spam email as not spam. If a spam email gets through our filter, then a human will waste a couple seconds deleting the email from their inbox. If an email gets incorrectly classified as spam, a potentially important email may not be seen. Therefore, we are also interested in looking at sensitivity and specificity. Sensitivity answers the question “how many of the positives classified by the model are actually positive,” while specificity answers the question “how many of the negatives in this model are actually negative.” “Ham” is considered to be our positive class, so more weight will be given to sensitivity, but specificity will also be considered. 
+
+If you are interested in reading more about the algorithms and accuracy measures used in this analysis, here are a few useful links:
+
+Decision Tree Learning: https://en.wikipedia.org/wiki/Decision_tree_learning
+
+Accuracy Measures: https://en.wikipedia.org/wiki/Sensitivity_and_specificity 
+
+Random Forest: https://en.wikipedia.org/wiki/Random_forest 
+
+# Model Building and Evaluation
+
+### Model selection
+
+There are many Random Forest algorithms that are available to use but for this exercise we are going to use the classic RandomForest package for R. This package implements Breiman’s random forest algorithm (based on Breiman and Cutler’s original Fortran code) for classification and regression. We will use this algorithm to classify SPAM and HAM.
+
+
+```{r Clean up #1 look for NA, include=FALSE}
+# look for NA values
+emailDFrp %>% select(everything()) %>% summarise_all(funs(sum(is.na(.))))
+
+# remove N/A values
+emailDF_dropNA <- emailDFrp %>% na.omit()
+
+emailDF_dropNA %>% select(everything()) %>% summarise_all(funs(sum(is.na(.))))
+```
+
+### Splitting the data training and test
+In order to train and validate our model we are going to use a stratified split meaning that the data will be split in a way that preservest the proportions of True and False values observed in the complete data set. Training data will consist of 80% of our data the remaining 20% of the data will be a holdout set used to validate the model.
+
+```{r split_data_1, include=TRUE}
+#stratified split #1 from the entire data set we are splitting off a 20% as a final validation set to verify our model. The other 80% of the data will be used for training the random forest model
+set.seed(seed)
+
+inTrain <- createDataPartition(
+  y= emailDF_dropNA$isSpam,
+  p = .80,
+  list = FALSE
+)
+
+
+training <- emailDFrp[inTrain,]
+testing <- emailDFrp[-inTrain,]
+
+print("Number of rows in Training data")
+nrow(training)
+print("Number of rows in Testing data")
+nrow(testing)
+```
+
+### baseline Random forest model
+
+First we will create a baseline Random Forest (RF) model so we can assess how well the RF model performs without any parameter tuning to classify our data. In the baseline model we will be using all the predictors 29 available in the data in order to classify "isSpam" as True or False". The baseline RF model does an exceptionally good job at classify email with an Accuracy of ?, sensitivity of ? and, specificity of ?.
+
+```{r,time_it = TRUE}
+set.seed(seed)
+# create baseline random forest model
+rf_baseline <- randomForest(isSpam ~., data = training, ntree = 50, importance=TRUE, na.action = na.roughfix, maxnodes = 10)
+
+pred_baseline <- predict(rf_baseline,testing)
+confusionMatrix(pred_baseline,testing$isSpam)
+```
+
+### Basic model most important variables
+
+After generating our basic RF model we can create variable importance plots in order to see what predictors are the most important within the basic RF model. The two plots below are:
+
+**MeanDecreaseAccuracy:** gives a rough estimate of the loss in prediction performance when that particular variable is omitted from the training set.
+
+**MeanDecreaseGini:** GINI is a measure of node impurity. Think of it like this, if you use this feature to split the data, how pure will the nodes be? Highest purity means that each node contains only elements of a single class. Assessing the decrease in GINI when that feature is omitted leads to an understanding of how important that feature is to split the data correctly.
+
+```{r, fig.dim=c(8,6)}
+set.seed(seed)
+#Can we improve our baseline model by omitting low value variables?
+varImpPlot(rf_baseline, cex = .7, main = "Variable Importance",pt.cex = 1,color = 'red',frame.plot = FALSE,lcolor = 'black')
+
+```
+### Rerunning baseline RF just using Best Predictors
+
+**Remove low importance Variables**
+
+After reviewing the best predictors in our baseline model we will remove variables with low importance and create a new cut of the training and test data. The top 15 variables in each are our best predictors and we settle on 18 variables that are a combination of the top 15 found in both charts and the remaining values unique to both lists. Our reduced variable set is below:
+
+```{r remove_lowImportance_Vars, include=TRUE}
+set.seed(seed)
+training_best <- subset(training, select = c(isSpam,perCaps,perHTML,subExcCt,avgWordLen,subBlanks,isDear,numEnd,subSpamWords,bodyCharCt,numLines,hour,forwards,isYelling,numDlr,numRec,bodyCharCt,isInReplyTo,isRe))
+
+testing_best <- subset(testing, select = c(isSpam,perCaps,perHTML,subExcCt,avgWordLen,subBlanks,isDear,numEnd,subSpamWords,bodyCharCt,numLines,hour,forwards,isYelling,numDlr,numRec,bodyCharCt,isInReplyTo,isRe))
+
+#output best predictors
+col_best <- as.data.frame(colnames(training_best))
+kable(col_best,col.names = c("Columns")) %>% kable_paper(full_width = FALSE)
+```
+
+**Rerun baseline RF model with best predictors**
+After creating training a test data sets using only our best predictors we rerun the baseline model. The purpose is to determine if we can achieve as good or better results in our baseline model using the best predictors as indicated by our Mean decrease accuracy and mean decrease GINI plots. After rerunning the baseline model we find that it did improve the baseline models accuracy,Sensitivity, or SPecificity. Based on this we will choose to use our best predictors in building the final Random Forest Model.
+
+
+```{r baseline_rf_best,time_it = TRUE}
+set.seed(seed)
+# create baseline random forest model
+rf_baseline_best <- randomForest(isSpam ~., data = training_best, ntree = 50, importance=TRUE, na.action = na.roughfix, maxnodes = 10)
+
+pred_baseline_best <- predict(rf_baseline_best,testing_best)
+confusionMatrix(pred_baseline_best,testing_best$isSpam)
+```
+
+
+### Model tunning
+
+The random forest model has a number of options and parameters that can be adjusted but the two that we will focus on to tune our model are:
+
+**nTree-**Number of trees to grow. This should not be set to too small a number, to ensure that every input row gets predicted at least a few times.
+
+**mtry-**Number of variables randomly sampled as candidates at each split.
+
+### K fold Cross validation and gridsearch
+
+The method we will be using to tune these parameters are K fold cross validation and grid search.  
+
+**K-fold Cross Validation**
+Cross validation is a technique in which we train our model using the subset of the data-set and then evaluate using the complementary subset of the data-set.
+
+The three steps involved in cross-validation are as follows:  
+1. Reserve some portion of sample data-set.  
+2. Using the rest data-set train the model.  
+3. Test the model using the reserve portion of the data-set.  
+
+The K fold part of cross validation denotes the number of times that we are going to perform the three cross validation steps. For our purposes we will perform a 10 fold cross validation.
+
+**Grid Search**
+A grid search is a technique that can be used to test specific values to be used for a certain parameter. In our case we are going to use grid search to find the best value for 'mtry' we'll try a range of values from 1-10. In the grid, each algorithm parameter can be specified as a vector of possible values. These vectors combine to define all the possible combinations to try.
+
+**Pre-Processing**
+For our final model we will also be performing a few pre-processing steps. The first step will be to center and scale our continuous predictors variables. Centering and scaling our data can help improve classification results by normalizing and standardizing the continuous variables in the data. All normalization means is scaling a data set so that its minimum is 0 and its maximum 1. Standardization or centering is slightly different; it's job is to center the data around 0 and to scale with respect to the standard deviation. 
+
+# Final model assessment
+
+Our final model after tuning the parameters shows an improvement over our baseline model. The table below show the accuracy, sensitivity and specificity achieved by each model that we tested.
+
+```{r, time_it=TRUE}
+set.seed(seed)
+control <- trainControl(method="cv", number=10, search="grid")
+tunegrid <- expand.grid(mtry=c(1:10))
+
+modellist <- list()
+for (ntree in c(50,100,200,300)) {
+	set.seed(seed)
+	fit <- train(isSpam~., 
+	             data=training_best, 
+	             method="rf", 
+	             preProc=c("center", "scale"),
+	             tuneGrid=tunegrid,
+	             na.action = na.roughfix, 
+	             trControl=control, 
+	             ntree=ntree,
+	             importance=TRUE,
+	             maxnodes = 10)
+	key <- toString(ntree)
+	modellist[[key]] <- fit
+}
+# compare results
+print(fit)
+plot(fit,main = "Best number of random values to use in tree splits")
+results <- resamples(modellist)
+summary(results)
+dotplot(results)
+
+```
+
+### Final model results
+```{r}
+set.seed(seed)
+preds_final <- predict.train(fit,
+                             newdata = testing_best,
+                             na.action = na.roughfix,
+                             preProc=c("center", "scale"))
+confusionMatrix(preds_final,testing_best$isSpam)
+```
+### Most important variables used in final model
+
+The most important variables used by our final model are perCaps and perHTML. The perCaps variable is the percentage of letters that are capitalized in the email and perHTML denotes the percentage of characters in HTML tags in the message body in comparison to all characters. These two variables make sense as the most important to the model because a spam or junk email usually has lots of capitalized letters meant to denote emphasis and excitement. Spam emails also generally contain links and other HTML formatting which would add more HTML tags to the email.
+```{r}
+plot(varImp(fit))
+```
+
+
+# Visualize Random Forest Tree
+
+
+
+```{r, warning=FALSE}
+# function to plot Random foresttree 
+
+tree_func <- function(final_model, 
+                      tree_num) {
+  
+  # get tree by index
+  tree <- randomForest::getTree(final_model, 
+                                k = tree_num, 
+                                labelVar = TRUE) %>%
+    tibble::rownames_to_column() %>%
+    # make leaf split points to NA, so the 0s won't get plotted
+    mutate(`split point` = ifelse(is.na(prediction), `split point`, NA))
+  
+  # prepare data frame for graph
+  graph_frame <- data.frame(from = rep(tree$rowname, 2),
+                            to = c(tree$`left daughter`, tree$`right daughter`))
+  
+  # convert to graph and delete the last node that we don't want to plot
+  graph <- graph_from_data_frame(graph_frame) %>%
+    delete_vertices("0")
+  
+  # set node labels
+  V(graph)$node_label <- gsub("_", " ", as.character(tree$`split var`))
+  V(graph)$leaf_label <- as.character(tree$prediction)
+  V(graph)$split <- as.character(round(tree$`split point`, digits = 2))
+  
+  # plot
+  plot <- ggraph(graph, 'dendrogram') + 
+    theme_bw() +
+    geom_edge_link() +
+    geom_node_point() +
+    geom_node_text(aes(label = node_label), na.rm = TRUE, repel = TRUE) +
+    geom_node_label(aes(label = split), vjust = 2.5, na.rm = TRUE, fill = "white") +
+    geom_node_label(aes(label = leaf_label, fill = leaf_label), na.rm = TRUE, 
+					repel = TRUE, colour = "white", fontface = "bold", show.legend = FALSE) +
+    theme(panel.grid.minor = element_blank(),
+          panel.grid.major = element_blank(),
+          panel.background = element_blank(),
+          plot.background = element_rect(fill = "white"),
+          panel.border = element_blank(),
+          axis.line = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_blank(),
+          axis.ticks = element_blank(),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          plot.title = element_text(size = 18))
+  
+  print(plot)
+}
+```
+
+We will use the following data point as an example of how data would flow through the tree.
+```{r}
+kable(testing_best[1,][,2:18])
+```
+
+
+```{R,fig.dim=c(8,6), warning = FALSE}
+tree_num <- which(fit$finalModel$forest$ndbigtree == min(fit$finalModel$forest$ndbigtree))
+tree_func(final_model = fit$finalModel, 1)
+```
+
+
+# Conclusion
+
+After evaluating all three of the Random Forest models that were created we find that our baseline model performs very well. With hyper-parameter tunning we are able to slightly improve the Random Forest model from our baseline model by adjusting the number of Trees that are in the forest and by updating the number of random variables used to split in each tree. We believe that using the Random Forest model is an excellent model for predicting if an email is spam or not. Moving forward we would suggest creating a data pipeline that allows the retraining of the random forest model as spam emails may change over time and the model would then need to be retrained in order to maintain quality. We would also recommend
