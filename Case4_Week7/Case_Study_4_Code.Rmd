@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(tswge)
+library(tseries)
 library(tidyverse)
 ```
 
@@ -32,11 +33,17 @@ fluts
 ljung.wge(fluts)
 ```
 
+```{r}
+adf.test(fluts, alternative = 'stationary')
+```
+
 
 ```{r}
 plotts.sample.wge(fluts)
-
 ```
+
+
+
 
 ```{r}
 # diff @ 52. 
@@ -44,34 +51,37 @@ second = artrans.wge(fluts, phi.tr = 1)
 plotts.sample.wge(second)
 ```
 ```{r}
+adf.test(second, alternative = 'stationary')
+```
+
+```{r}
 # diff @ 52. 
-diff52 = artrans.wge(fluts, phi.tr = 52)
+seasonal = artrans.wge(fluts, phi.tr = 52)
 plotts.sample.wge(diff52)
 ```
+```{r}
+adf.test(diff52, alternative = 'stationary')
+```
+
+
+```{r}
+aic5.wge(fluts, p = 0:10, q = 0:5, type = 'aic')
+```
 
 
 
 ```{r}
-aic5.wge(second, p = 0:10, q = 0:5, type = 'aic')
+model1 = est.arma.wge(fluts, p = 7, q=0)
 ```
 
 ```{r}
-aic5.wge(second, p = 0:10, q = 0:5, type = 'bic')
-```
-
-```{r}
-model1 = est.arma.wge(second, p = 6, q = 1)
-```
-
-```{r}
-#Model 2  
 phis = model1$phi
 thetas = model1$theta
 s  = 0
-d  = 1
+d  = 0
 
 trainingSize = 60
-horizon = 4
+horizon = 26
 ASEHolder = numeric()
 
 for( i in 1:(length(fluts)-(trainingSize + horizon) + 1))
@@ -91,10 +101,12 @@ WindowedASE = mean(ASEHolder)
 summary(ASEHolder)
 WindowedASE
 ```
-
+```{r}
+aic5.wge(second, p = 0:10, q = 0:5, type = 'aic')
+```
 
 ```{r}
-model2 = est.arma.wge(second, p = 8, q = 0)
+model2 = est.arma.wge(second, p = 6, q = 1)
 ```
 
 ```{r}
@@ -105,7 +117,7 @@ s  = 0
 d  = 1
 
 trainingSize = 60
-horizon = 4
+horizon = 26
 ASEHolder = numeric()
 
 for( i in 1:(length(fluts)-(trainingSize + horizon) + 1))
@@ -128,13 +140,57 @@ WindowedASE
 ```
 
 ```{r}
-model1preds = fore.aruma.wge(fluts, phi = model1$phi, theta = model1$theta, d = 1, n.ahead = 4, plot = F)
+aic5.wge(seasonal, p = 0:10, q = 0:5, type = 'aic')
+```
+
+```{r}
+model3 = est.arma.wge(seasonal, p = 7, q = 0)
+```
+
+```{r}
+#Model 2  
+phis = model3$phi
+thetas = model3$theta
+s  = 52
+d  = 0
+
+trainingSize = 60
+horizon = 26
+ASEHolder = numeric()
+
+for( i in 1:(length(fluts)-(trainingSize + horizon) + 1))
+{
+  
+  forecasts = fore.aruma.wge(fluts[i:(i+(trainingSize-1))],phi = phis, theta = thetas, s = s, d = d,n.ahead = horizon, plot = F)
+  
+  ASE = mean((fluts[(trainingSize+i):(trainingSize+ i + (horizon) - 1)] - forecasts$f)^2)
+  
+  ASEHolder[i] = ASE
+  
+}
+
+
+hist(ASEHolder)
+WindowedASE = mean(ASEHolder)
+
+summary(ASEHolder)
+WindowedASE
+```
+
+
+
+
+```{r}
+model1preds = fore.aruma.wge(fluts, phi = model1$phi, theta = model1$theta, d = 1, n.ahead = 26, limits = F)
 model1preds$f
 ```
 
 ```{r}
-model2preds = fore.aruma.wge(fluts, phi = model2$phi, theta = model2$theta, d = 1, n.ahead = 4, plot = F)
+model2preds = fore.aruma.wge(fluts, phi = model2$phi, theta = model2$theta, d = 1, n.ahead = 26, limits = F)
 model2preds$f
 ```
 
-
+```{r}
+model3preds = fore.aruma.wge(fluts, phi = model3$phi, theta = model3$theta, s = 52, n.ahead = 26, limits = F)
+model3preds$f
+```
