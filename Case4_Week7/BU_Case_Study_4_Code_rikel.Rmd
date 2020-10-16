@@ -1,0 +1,150 @@
+---
+title: 'Case 4: Flu Prediction'
+author: "Andrew Larsen, Matt Chinchilla, Rikel Djoko"
+date: "October 12, 2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Business Understanding 
+
+Influenza, commonly referred to as the flue is a worldwide respiratory infectious disease that easily spreads from one person to another. In the North America region each year more than 2000 000 people are hospitalized with flu, and about 36000 die.  Flu spreads mainly from person-to-person through coughing air by coughs or sneezes, creating aerosols containing the virus from infectious individuals. 
+
+In this study, we used 20 years worth of data from Jan 2000 to Dec 2020 pulled from the CDC website(https://www.cdc.gov/flu/) . To run and determine the appropriate autoregressive integrated moving average (ARIMA) model for influenza transmission in North America. Forecasting of seasonal infectious diseases, such as influenza, can help in public health planning and outbreak response
+
+ 
+# Data Evaluation and Engineering
+
+```{r}
+library(tswge)
+library(tidyverse)
+```
+
+```{r}
+df = read.csv('FluNetInteractiveReport.csv', skip = 3)
+head(df)
+```
+
+```{r}
+df5yrs = df[df$Year > 2014,]
+fluts = replace_na(df5yrs$ALL_INF,0)
+fluts
+```
+
+
+```{r}
+# Noooot white noise. Fill NA with 0, it's safe to assume that they're 0. 
+ljung.wge(fluts)
+```
+
+
+```{r}
+plotts.sample.wge(fluts)
+
+```
+
+```{r}
+# diff @ 52. 
+second = artrans.wge(fluts, phi.tr = 1)
+plotts.sample.wge(second)
+```
+```{r}
+# diff @ 52. 
+diff52 = artrans.wge(fluts, phi.tr = 52)
+plotts.sample.wge(diff52)
+```
+
+
+
+```{r}
+aic5.wge(second, p = 0:10, q = 0:5, type = 'aic')
+```
+
+```{r}
+aic5.wge(second, p = 0:10, q = 0:5, type = 'bic')
+```
+
+```{r}
+model1 = est.arma.wge(second, p = 6, q = 1)
+```
+
+```{r}
+#Model 2  
+phis = model1$phi
+thetas = model1$theta
+s  = 0
+d  = 1
+
+trainingSize = 60
+horizon = 4
+ASEHolder = numeric()
+
+for( i in 1:(length(fluts)-(trainingSize + horizon) + 1))
+{
+  
+  forecasts = fore.aruma.wge(fluts[i:(i+(trainingSize-1))],phi = phis, theta = thetas, s = s, d = d,n.ahead = horizon, plot = F)
+  
+  ASE = mean((fluts[(trainingSize+i):(trainingSize+ i + (horizon) - 1)] - forecasts$f)^2)
+  
+  ASEHolder[i] = ASE
+  
+}
+
+hist(ASEHolder)
+WindowedASE = mean(ASEHolder)
+
+summary(ASEHolder)
+WindowedASE
+```
+
+
+```{r}
+model2 = est.arma.wge(second, p = 8, q = 0)
+```
+
+```{r}
+#Model 2  
+phis = model2$phi
+thetas = model2$theta
+s  = 0
+d  = 1
+
+trainingSize = 60
+horizon = 4
+ASEHolder = numeric()
+
+for( i in 1:(length(fluts)-(trainingSize + horizon) + 1))
+{
+  
+  forecasts = fore.aruma.wge(fluts[i:(i+(trainingSize-1))],phi = phis, theta = thetas, s = s, d = d,n.ahead = horizon, plot = F)
+  
+  ASE = mean((fluts[(trainingSize+i):(trainingSize+ i + (horizon) - 1)] - forecasts$f)^2)
+  
+  ASEHolder[i] = ASE
+  
+}
+
+
+hist(ASEHolder)
+WindowedASE = mean(ASEHolder)
+
+summary(ASEHolder)
+WindowedASE
+```
+
+```{r}
+model1preds = fore.aruma.wge(fluts, phi = model1$phi, theta = model1$theta, d = 1, n.ahead = 4, plot = F)
+model1preds$f
+```
+
+```{r}
+model2preds = fore.aruma.wge(fluts, phi = model2$phi, theta = model2$theta, d = 1, n.ahead = 4, plot = F)
+model2preds$f
+```
+
+
