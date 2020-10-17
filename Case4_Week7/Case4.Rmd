@@ -1,0 +1,89 @@
+---
+title: "Case4"
+author: "Matt Chinchilla"
+date: "10/11/2020"
+output:
+  html_document:
+    keep_md: yes
+    word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(DataExplorer)
+library(knitr)
+library(kableExtra)
+```
+
+```{r readfile}
+#Read in file
+file <- read.csv(file="FluNetInteractiveReport.csv")
+#getwd()
+```
+
+
+## Data extraction and Evaluation
+
+* Source: World Health Organization FluNet https://apps.who.int/flumart/Default?ReportNo=7
+* Country: United States
+* Time Period: 2000-2020(Week38)
+
+Below is information about the structure of the data collected from the W.H.O. fluNet website. Twenty years worth of data was collected from 2000 to week 38 of 2020. There are 22 columns most of which are continuous variables and six categorical columns. Almost eighteen percent of the data consists of missing values.
+
+```{r datastats,warning=FALSE,message=FALSE}
+introduce(file) %>% kbl(caption = "Overview Stats") %>% kable_styling(bootstrap_options = c("striped","condensed"))
+plot_intro(file,ggtheme = theme_classic(),theme_config = list(legend.position = c("right")),title = "Quick Stats")
+```
+
+### Data columns and classes
+
+The response column we are interested in predicting is ALL_INF which is a weekly aggregate of positive cases for all strains of the flu. Since we are only focused on the United states there is redundant data in several columns including "Country","WHOREGION",and "FLUREGION".
+
+```{r, message=TRUE}
+str(file,vec.len = 1,nchar.max = 50)
+plot_str(file)
+```
+
+### Missing Data
+
+Below are charts to help visualize the how much data is missing from each column. The first chart shows the count of missing values and the second chart is the percentage of missing data from each column. ALL_INF is the primary column we are focused on predicting and we can see that there are 70 missing values in that column which only represents 6.48% of the overall data.
+
+```{r message=FALSE, warning=FALSE}
+mv <-as.data.frame(colSums(is.na(file)))
+
+mv <- cbind(columnName = rownames(mv), mv)
+
+rownames(mv) <- 1:nrow(mv)
+
+colnames(mv)[2] <- "count"
+
+mv <- within(mv, 
+                Position <- factor(columnName, 
+                                levels=names(sort(table(columnName), 
+                                                  decreasing=TRUE))))
+
+
+p <-ggplot(mv, aes(x = count, y = reorder(columnName,count))) +
+  geom_bar(stat = "identity",fill = "steelblue") + 
+  ggtitle(label = "Count of NA values by column", subtitle = paste("Total NAs =", sum(is.na(file)))) +
+  ylab("") +
+  theme_minimal()
+ 
+tx <- geom_text(aes(label=count), vjust=.5, color="white", size=3,hjust='right')
+
+p+tx
+```
+
+
+
+```{r}
+
+
+plot_missing(file,ggtheme = theme_classic(),theme_config = list(legend.position = c("right")),title = "Percentage of Data Missing from each column")
+
+```
