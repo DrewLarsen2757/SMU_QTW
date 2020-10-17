@@ -9,71 +9,155 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Modeling Building
+In order to predict flu cases in the coming weeks, we have decided to build and compare multiple ARIMA(p,d,q) models. ARIMA is different than a normal deterministic model that you may see as output from something like linear regression, in that the data at previous lags is used to calculate the current data point. The ARIMA model is broken down into 3 parts: the "AR(p)" part, the "I" part, which is where we get our d, and the "MA(q)" part. 
 
-```{r}
+The "AR(p)" part, or Auto-Regressive model, is a function of the values at previous lags of the data set. The p signifies how far back we include lags in our model. If we have a p of 7, we look 7 lags back in order to calculate the current point. 
+
+The "MA(q)" part, or Moving Average model, is a function of the average of the previous q values in the variable. The average of previous lags can tell us something about the value of the variable at the current time. 
+
+The I, or integrated, part of the ARIMA model signifies how many times we "difference" the data. Differencing occurs when you take the value of the variable at a time and subtract the value of the variable at the time directly before it. The amount of times that you difference is the "d" in the ARIMA(p,d,q) model.
+
+We also include seasonality in this data. Seasonality is similar to differencing, but instead of differencing the previous time step, we difference s time steps previously. If s = 4, then we subtract using the value of the variable 4 time steps prior. 
+
+We difference the data in order to make it "stationary." Stationarity states that the mean, variance, and the dependence on previous lags do not change over time. AR, MA, and ARMA (a combination of AR and MA models) require that the data is stationary. Often, we check if the data is stationary and if not, we difference the data until it is. We then take the differenced data and fit an ARMA model to it. 
+
+These models are useful when we have temporally correlated data, as we do now. Having correlation in the data makes it difficult to create models using traditional statistics, as an assumption for these models typically is that the variable's values are independent of itself, which is not the case with flu data. If you have a high number of cases yesterday, you are likely to have a high number of cases today. The ARIMA(p,d,q) model allows us to use the correlations present in the data in order to aid in our predictions. 
+
+```{r, results = 'hide'}
 library(tswge)
 library(tseries)
 library(tidyverse)
 ```
 
+As you can see below, we have pulled data from the cdc website relating to flu cases. There are many different types of flus, so we have decided to use the ALL_INF variable as our data. 
 ```{r}
 df = read.csv('/home/drew/School/Semester4/QTW/SMU_QTW/Case4_Week7/FluNetInteractiveReport.csv', skip = 3)
 head(df)
 ```
 
+As globalization has increased rapidly in the past few years, it became clear to us that the trends in the data before 2015 may not be the same as the trends in the data after 2015, so we have decided to cut our data set to the past 5 years. There are no NA values present in this data set. 
 ```{r}
 df5yrs = df[df$Year > 2014,]
-fluts = replace_na(df5yrs$ALL_INF,0)
-fluts
+print("The number of NAs in the time series is")
+sum(is.na(fluts))
 ```
 
-
+Here we use the Ljung-Box test to decide if there is temporal dependence present in this data. A p-value less than 0.05 indicates that there is temporal dependence present, and we can move on with modelling our data using ARIMA. Had the p-value been greater than 0.05, there would have been a lack of evidence of temporal dependence, implying that our data set may be white noise. Using an ARIMA model on white noise would be useless as there is no dependence on previous lags in this data, which is what ARIMA leverages to make predictions. 
 ```{r}
-# Noooot white noise. Fill NA with 0, it's safe to assume that they're 0. 
 ljung.wge(fluts)
 ```
 
-```{r}
-adf.test(fluts, alternative = 'stationary')
-```
-
-
+You can see the plot of the data set in the top left, the sample autocorrelations in the top right, the Periodogram in the bottom left and the Parzen window in the bottom right. The Parzen window is a smoothed version of the Periodogram, so we will focus on the Parzen window instead. Note the strong seasonal trend in the data. Every 52 weeks or so, flu cases peak. Since the flu is a seasonal virus, we expect to see that behavior in the data. The autocorrelation plot shows what lags the current time step depends on and how strongly it depends on the previous lags. Looking at the autocorrelation plot, we see a slow dampening of the autocorrelations. This indicates that we may need to difference the data, or that there may be a moving average component present in the data. Lastly, we look at the Parzen window. This plots the frequencies present in the data. The Parzen window has a peak around 0.0, which can indicate strong wandering behavior or a possible seasonal trend with a low frequency. 
 ```{r}
 plotts.sample.wge(fluts)
 ```
 
-
-
-
+We use the Dickey-Fuller test below, which tests if the data is stationary. The data passes the Dickey-Fuller test, but this is a test with a high false positive rate. We made the decision to make multiple models and compare them, rather than relying only on the Dickey-Fuller test. These results support our first model, which assumes that the model doesn't need to be differenced. The plots above suggest that there is some seasonality in the data and there might be some differencing necessary. 
 ```{r}
-# diff @ 52. 
+adf.test(fluts, alternative = 'stationary')
+```
+
+Here is the plot, the sample autocorrelations, the Periodogram and Parzen window of the differenced data. Note that the seasonality is still present in the data, but there is less of a damping trend in the sample autocorrelations. Differencing definitely removes some of the wandering that the sample autocorrelations and Parzen window detected in the data. 
+```{r}
 second = artrans.wge(fluts, phi.tr = 1)
 plotts.sample.wge(second)
 ```
+
+The Dickey-Fuller test says that the differenced data is stationary, so we can feel confident fitting an ARMA model to the differenced data. 
 ```{r}
 adf.test(second, alternative = 'stationary')
 ```
 
+Here is the plot, the sample autocorrelations, the Periodogram and Parzen window of the seasonally differenced data with s=52. We chose 52 since we expect the flu trend to repeat every year and we have weekly data. Note that the plot looks like it flipped upside down, and note that the wandering behavior is still present in the autocorrelations and the Parzen window. 
+```{r}
+seasonal = artrans.wge(fluts, phi.tr = 52)
+plotts.sample.wge(seasonal)
+
+```
+
+The Dickey-Fuller test suggests that we have stationary data after seasonally differencing, so we can go ahead and fit an ARMA model to the remaining data. 
+```{r}
+adf.test(seasonal, alternative = 'stationary')
+```
+
+Here is the plot, the sample autocorrelations, the Periodogram and Parzen window of the differenced and seasonally differenced s=52 data. Note that it looks like the plot of the differenced data is flipped, and that the autocorrelations and Parzen window look similar to the single differenced data. 
 ```{r}
 # diff @ 52. 
-seasonal = artrans.wge(fluts, phi.tr = 52)
-plotts.sample.wge(diff52)
+seasonalanddiff = artrans.wge(second, phi.tr = 52)
+plotts.sample.wge(seasonalanddiff)
 ```
+
+The Dickey-Fuller test suggests that we have stationary data after seasonally and regularly differencing, so we can go ahead and fit an ARMA model to the remaining data. 
 ```{r}
-adf.test(diff52, alternative = 'stationary')
+adf.test(seasonalanddiff, alternative = 'stationary')
 ```
 
 
+Here, we use AIC to determine the best p and q for our non-differenced model. AIC suggests that we use p = 7 and q = 0 after testing all combinations of p between 0 and 10 and q between 0 and 5. 
 ```{r}
 aic5.wge(fluts, p = 0:10, q = 0:5, type = 'aic')
 ```
 
 
-
+Here, we estimate the parameters of the AR(7) model. 
 ```{r}
 model1 = est.arma.wge(fluts, p = 7, q=0)
 ```
 
+The Ljung-Box test suggests that we modelled the temporal dependence out of the data with an AR(7) model, so we can move forward with this model.
+```{r}
+ljung.wge(model1$res)
+```
+
+
+Here, we use AIC to determine the best p and q for our single differenced model. AIC suggests that we use p = 6 and q = 1 after testing all combinations of p between 0 and 10 and q between 0 and 5. 
+```{r}
+aic5.wge(second, p = 0:10, q = 0:5, type = 'aic')
+```
+
+Here, we estimate the parameters of the ARIMA(6,1,1) model. 
+```{r}
+model2 = est.arma.wge(second, p = 6, q = 1)
+```
+
+The Ljung-Box test suggests that we modelled the temporal dependence out of the data with an ARIMA(6,1,1) model, so we can move forward with this model.
+```{r}
+ljung.wge(model2$res)
+```
+
+
+
+Here, we use AIC to determine the best p and q for our seasonally differenced model. AIC suggests that we use p = 7 and q = 0 after testing all combinations of p between 0 and 10 and q between 0 and 5. 
+```{r}
+aic5.wge(seasonal, p = 0:10, q = 0:5, type = 'aic')
+```
+Here, we estimate the parameters of the ARIMA(7,0,0) model with s = 52.
+```{r}
+model3 = est.arma.wge(seasonal, p = 7, q = 0)
+```
+The Ljung-Box test suggests that we modelled the temporal dependence out of the data with an ARIMA(7,0,0) with s = 52 model, so we can move forward with this model.
+```{r}
+ljung.wge(model3$res)
+```
+
+Here, we use AIC to determine the best p and q for our differenced and seasonally differenced model. AIC suggests that we use p = 6 and q = 1 after testing all combinations of p between 0 and 10 and q between 0 and 5. 
+```{r}
+aic5.wge(seasonalanddiff, p = 0:10, q = 0:5, type = 'aic')
+```
+
+Here, we estimate the parameters of the ARIMA(6,1,1) model with s = 52. 
+```{r}
+model4 = est.arma.wge(seasonalanddiff, p = 6, q = 1)
+```
+
+The Ljung-Box test suggests that we modelled the temporal dependence out of the data with an ARIMA(6,1,1) with s = 52 model, so we can move forward with this model.
+```{r}
+ljung.wge(model4$res)
+```
+
+## Forecasting
+Here, we use a rolling window to determine the average squared error of our first model. Since there is temporal dependence in the data, we can't just take a random subset of data and predict it using a model that was trained on a different subset of data. Instead, we must use a rolling window. In our case, we forecast 26 weeks ahead using the 60 data points previously and calculate the average squared error between our 26 predictions and the actual data. This is done many times by sliding the training and prediction window across the data, hence the "rolling window." The rolling window ASE for the AR(7) model is 38,854,927. 
 ```{r}
 phis = model1$phi
 thetas = model1$theta
@@ -101,16 +185,9 @@ WindowedASE = mean(ASEHolder)
 summary(ASEHolder)
 WindowedASE
 ```
-```{r}
-aic5.wge(second, p = 0:10, q = 0:5, type = 'aic')
-```
 
+Again, we use a rolling window to calculate the average squared error. The ASE of the ARIMA(6,1,1) model is 79,473,892
 ```{r}
-model2 = est.arma.wge(second, p = 6, q = 1)
-```
-
-```{r}
-#Model 2  
 phis = model2$phi
 thetas = model2$theta
 s  = 0
@@ -139,16 +216,8 @@ summary(ASEHolder)
 WindowedASE
 ```
 
+Again, we use a rolling window to calculate the average squared error. The ASE of the ARIMA(7,0,0) with s = 52 model is 22,720,711.
 ```{r}
-aic5.wge(seasonal, p = 0:10, q = 0:5, type = 'aic')
-```
-
-```{r}
-model3 = est.arma.wge(seasonal, p = 7, q = 0)
-```
-
-```{r}
-#Model 2  
 phis = model3$phi
 thetas = model3$theta
 s  = 52
@@ -177,20 +246,58 @@ summary(ASEHolder)
 WindowedASE
 ```
 
-
-
-
+Again, we use a rolling window to calculate the average squared error. The ASE of the ARIMA(6,1,1) with s = 52 model is 47,934,334.
 ```{r}
-model1preds = fore.aruma.wge(fluts, phi = model1$phi, theta = model1$theta, d = 1, n.ahead = 26, limits = F)
+phis = model4$phi
+thetas = model4$theta
+s  = 52
+d  = 1
+
+trainingSize = 60
+horizon = 26
+ASEHolder = numeric()
+
+for( i in 1:(length(fluts)-(trainingSize + horizon) + 1))
+{
+  
+  forecasts = fore.aruma.wge(fluts[i:(i+(trainingSize-1))],phi = phis, theta = thetas, s = s, d = d,n.ahead = horizon, plot = F)
+  
+  ASE = mean((fluts[(trainingSize+i):(trainingSize+ i + (horizon) - 1)] - forecasts$f)^2)
+  
+  ASEHolder[i] = ASE
+  
+}
+
+
+hist(ASEHolder)
+WindowedASE = mean(ASEHolder)
+
+summary(ASEHolder)
+WindowedASE
+```
+
+Below are the predictions for 52 weeks of flu data using AR(7). The predictions are very flat and do not capture the flu season spike. 
+```{r}
+model1preds = fore.aruma.wge(fluts, phi = model1$phi, theta = model1$theta, d = 1, n.ahead = 52, limits = F, lastn = T)
 model1preds$f
 ```
 
+Below are the predictions for 52 weeks of flu data using ARIMA(6,1,1). The predictions are flat again and do not capture the flu season spike. 
 ```{r}
-model2preds = fore.aruma.wge(fluts, phi = model2$phi, theta = model2$theta, d = 1, n.ahead = 26, limits = F)
+model2preds = fore.aruma.wge(fluts, phi = model2$phi, theta = model2$theta, d = 1, n.ahead = 52, limits = F, lastn = T)
 model2preds$f
 ```
 
+Below are the predictions for 52 weeks of flu data using ARIMA(7,0,0) with s = 52. These predictions have the same seasonal trend as the previous year, and certainly look more accurate. This model predicts a spike during flu season and a low amount of cases during the offseason, which is much better than our previous two models. 
 ```{r}
-model3preds = fore.aruma.wge(fluts, phi = model3$phi, theta = model3$theta, s = 52, n.ahead = 26, limits = F)
+model3preds = fore.aruma.wge(fluts, phi = model3$phi, theta = model3$theta, s = 52, n.ahead = 52, limits = F, lastn = T)
 model3preds$f
 ```
+
+Below are the predictions for 52 weeks of flu data using ARIMA(6,1,1) with s = 52. This is very similar to the ARIMA(7,0,0) with s = 52 model, but doesn't get as low during the flat flu period. 
+```{r}
+model4preds = fore.aruma.wge(fluts, phi = model4$phi, theta = model4$theta, d = 1, s = 52, n.ahead = 52, limits = F, lastn = T)
+model4preds$f
+```
+
+
