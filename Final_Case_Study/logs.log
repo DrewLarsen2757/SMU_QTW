@@ -1,0 +1,137 @@
+2020-11-28 09:12:31,571:INFO:PyCaret Supervised Module
+2020-11-28 09:12:31,571:INFO:ML Usecase: classification
+2020-11-28 09:12:31,571:INFO:version 2.2.2
+2020-11-28 09:12:31,571:INFO:Initializing setup()
+2020-11-28 09:12:31,571:INFO:setup(target=y, ml_usecase=classification, available_plots={'parameter': 'Hyperparameters', 'auc': 'AUC', 'confusion_matrix': 'Confusion Matrix', 'threshold': 'Threshold', 'pr': 'Precision Recall', 'error': 'Prediction Error', 'class_report': 'Class Report', 'rfe': 'Feature Selection', 'learning': 'Learning Curve', 'manifold': 'Manifold Learning', 'calibration': 'Calibration Curve', 'vc': 'Validation Curve', 'dimension': 'Dimensions', 'feature': 'Feature Importance', 'feature_all': 'Feature Importance (All)', 'boundary': 'Decision Boundary', 'lift': 'Lift Chart', 'gain': 'Gain Chart', 'tree': 'Decision Tree'}, train_size=0.7, test_data=None, preprocess=True, imputation_type=simple, iterative_imputation_iters=5, categorical_features=None, categorical_imputation=constant, categorical_iterative_imputer=lightgbm, ordinal_features=None, high_cardinality_features=None, high_cardinality_method=frequency, numeric_features=None, numeric_imputation=mean, numeric_iterative_imputer=lightgbm, date_features=None, ignore_features=None, normalize=False, normalize_method=zscore, transformation=False, transformation_method=yeo-johnson, handle_unknown_categorical=True, unknown_categorical_method=least_frequent, pca=False, pca_method=linear, pca_components=None, ignore_low_variance=False, combine_rare_levels=False, rare_level_threshold=0.1, bin_numeric_features=None, remove_outliers=False, outliers_threshold=0.05, remove_multicollinearity=False, multicollinearity_threshold=0.9, remove_perfect_collinearity=True, create_clusters=False, cluster_iter=20, polynomial_features=False, polynomial_degree=2, trigonometry_features=False, polynomial_threshold=0.1, group_features=None, group_names=None, feature_selection=False, feature_selection_threshold=0.8, feature_selection_method=classic, feature_interaction=False, feature_ratio=False, interaction_threshold=0.01, fix_imbalance=False, fix_imbalance_method=None, transform_target=False, transform_target_method=box-cox, data_split_shuffle=True, data_split_stratify=False, fold_strategy=stratifiedkfold, fold=10, fold_shuffle=False, fold_groups=None, n_jobs=-1, use_gpu=False, custom_pipeline=None, html=True, session_id=123, log_experiment=False, experiment_name=None, log_plots=False, log_profile=False, log_data=False, silent=False, verbose=True, profile=False, profile_kwargs=None, display=None)
+2020-11-28 09:12:31,571:INFO:Checking environment
+2020-11-28 09:12:31,572:INFO:python_version: 3.8.3
+2020-11-28 09:12:31,572:INFO:python_build: ('default', 'Jul  2 2020 16:21:59')
+2020-11-28 09:12:31,572:INFO:machine: x86_64
+2020-11-28 09:12:31,598:INFO:platform: Linux-5.4.0-54-generic-x86_64-with-glibc2.10
+2020-11-28 09:12:31,598:INFO:Memory: svmem(total=16563875840, available=12325265408, percent=25.6, used=3442446336, free=4910874624, active=4187209728, inactive=6327091200, buffers=423165952, cached=7787388928, shared=481513472, slab=637071360)
+2020-11-28 09:12:31,599:INFO:Physical Core: 4
+2020-11-28 09:12:31,599:INFO:Logical Core: 8
+2020-11-28 09:12:31,599:INFO:Checking libraries
+2020-11-28 09:12:31,599:INFO:pd==1.0.5
+2020-11-28 09:12:31,599:INFO:numpy==1.18.5
+2020-11-28 09:12:31,599:INFO:sklearn==0.23.2
+2020-11-28 09:12:31,902:INFO:xgboost==1.2.1
+2020-11-28 09:12:31,902:INFO:lightgbm==3.1.0
+2020-11-28 09:12:32,013:INFO:catboost==0.24.3
+2020-11-28 09:12:32,227:INFO:mlflow==1.12.1
+2020-11-28 09:12:32,227:INFO:Checking Exceptions
+2020-11-28 09:12:32,227:INFO:Declaring global variables
+2020-11-28 09:12:32,227:INFO:USI: 94a1
+2020-11-28 09:12:32,227:INFO:pycaret_globals: {'X_test', 'y_train', 'X', 'transform_target_method_param', 'transform_target_param', 'pycaret_globals', '_available_plots', 'seed', 'fold_generator', 'log_plots_param', 'html_param', 'master_model_container', 'logging_param', 'prep_pipe', 'stratify_param', 'fix_imbalance_param', 'data_before_preprocess', 'imputation_regressor', 'create_model_container', '_ml_usecase', 'experiment__', 'target_param', 'display_container', '_all_models', 'fold_shuffle_param', 'X_train', 'fix_imbalance_method_param', 'n_jobs_param', '_all_models_internal', 'y', 'imputation_classifier', 'gpu_param', 'iterative_imputation_iters_param', 'fold_groups_param', '_all_metrics', 'y_test', 'USI', 'exp_name_log', '_gpu_n_jobs_param', '_internal_pipeline', 'fold_param'}
+2020-11-28 09:12:32,227:INFO:Preparing display monitor
+2020-11-28 09:12:32,227:INFO:Preparing display monitor
+2020-11-28 09:12:32,238:INFO:Importing libraries
+2020-11-28 09:12:32,238:INFO:Copying data for preprocessing
+2020-11-28 09:12:32,264:INFO:Declaring preprocessing parameters
+2020-11-28 09:12:32,311:INFO:Creating preprocessing pipeline
+2020-11-28 09:12:32,897:INFO:Preprocessing pipeline created successfully
+2020-11-28 09:12:32,897:ERROR:(Process Exit): setup has been interupted with user command 'quit'. setup must rerun.
+2020-11-28 09:12:32,897:INFO:Creating global containers
+2020-11-28 09:12:32,898:INFO:Internal pipeline: Pipeline(memory=None, steps=[('empty_step', 'passthrough')], verbose=False)
+2020-11-28 09:12:39,953:INFO:Creating grid variables
+2020-11-28 09:12:40,030:INFO:create_model_container: 0
+2020-11-28 09:12:40,030:INFO:master_model_container: 0
+2020-11-28 09:12:40,030:INFO:display_container: 0
+2020-11-28 09:12:40,034:INFO:Pipeline(memory=None,
+         steps=[('dtypes',
+                 DataTypes_Auto_infer(categorical_features=[],
+                                      display_types=True, features_todrop=[],
+                                      id_columns=[],
+                                      ml_usecase='classification',
+                                      numerical_features=[], target='y',
+                                      time_features=[])),
+                ('imputer',
+                 Simple_Imputer(categorical_strategy='not_available',
+                                fill_value_categorical=None,
+                                fill_value_numerical=None,
+                                numeric_strategy='...
+                ('scaling', 'passthrough'), ('P_transform', 'passthrough'),
+                ('binn', 'passthrough'), ('rem_outliers', 'passthrough'),
+                ('cluster_all', 'passthrough'), ('dummy', Dummify(target='y')),
+                ('fix_perfect', Remove_100(target='y')),
+                ('clean_names', Clean_Colum_Names()),
+                ('feature_select', 'passthrough'), ('fix_multi', 'passthrough'),
+                ('dfs', 'passthrough'), ('pca', 'passthrough')],
+         verbose=False)
+2020-11-28 09:12:40,034:INFO:setup() succesfully completed......................................
+2020-11-28 09:13:00,258:INFO:Initializing create_model()
+2020-11-28 09:13:00,258:INFO:create_model(estimator=catboost, fold=None, round=4, cross_validation=True, predict=True, fit_kwargs=None, groups=None, refit=True, verbose=True, system=True, metrics=None, display=None, kwargs={})
+2020-11-28 09:13:00,258:INFO:Checking exceptions
+2020-11-28 09:13:00,258:INFO:Preparing display monitor
+2020-11-28 09:13:00,283:INFO:Importing libraries
+2020-11-28 09:13:00,283:INFO:Copying training dataset
+2020-11-28 09:13:00,288:INFO:Defining folds
+2020-11-28 09:13:00,288:INFO:Declaring metric variables
+2020-11-28 09:13:00,296:INFO:Importing untrained model
+2020-11-28 09:13:00,305:INFO:CatBoost Classifier Imported succesfully
+2020-11-28 09:13:00,322:INFO:Starting cross validation
+2020-11-28 09:13:00,323:INFO:Cross validating with StratifiedKFold(n_splits=10, random_state=123, shuffle=False), n_jobs=-1
+2020-11-28 09:16:24,758:INFO:Calculating mean and std
+2020-11-28 09:16:24,760:INFO:Creating metrics dataframe
+2020-11-28 09:16:24,773:INFO:Finalizing model
+2020-11-28 09:16:43,859:INFO:Uploading results into container
+2020-11-28 09:16:43,859:INFO:Uploading model into container now
+2020-11-28 09:16:43,897:INFO:create_model_container: 1
+2020-11-28 09:16:43,897:INFO:master_model_container: 1
+2020-11-28 09:16:43,897:INFO:display_container: 1
+2020-11-28 09:16:43,897:INFO:<catboost.core.CatBoostClassifier object at 0x7f891f71c370>
+2020-11-28 09:16:43,897:INFO:create_model() succesfully completed......................................
+2020-11-28 09:16:44,024:INFO:Initializing tune_model()
+2020-11-28 09:16:44,024:INFO:tune_model(estimator=<catboost.core.CatBoostClassifier object at 0x7f891f71c370>, fold=None, round=4, n_iter=10, custom_grid=None, optimize=Recall, custom_scorer=None, search_library=scikit-learn, search_algorithm=None, early_stopping=False, early_stopping_max_iters=10, choose_better=False, fit_kwargs=None, groups=None, return_tuner=False, verbose=True, tuner_verbose=True, display=None, kwargs={})
+2020-11-28 09:16:44,025:INFO:Checking exceptions
+2020-11-28 09:16:44,027:INFO:Preparing display monitor
+2020-11-28 09:16:44,049:INFO:Copying training dataset
+2020-11-28 09:16:44,053:INFO:Checking base model
+2020-11-28 09:16:44,054:INFO:Base model : CatBoost Classifier
+2020-11-28 09:16:44,060:INFO:Declaring metric variables
+2020-11-28 09:16:44,068:INFO:Defining Hyperparameters
+2020-11-28 09:16:44,180:INFO:Tuning with n_jobs=-1
+2020-11-28 09:16:44,181:INFO:Initializing RandomizedSearchCV
+2020-11-28 09:22:18,146:INFO:best_params: {'actual_estimator__random_strength': 0.4, 'actual_estimator__n_estimators': 250, 'actual_estimator__l2_leaf_reg': 100, 'actual_estimator__depth': 7}
+2020-11-28 09:22:18,147:INFO:Random search completed
+2020-11-28 09:22:18,147:INFO:SubProcess create_model() called ==================================
+2020-11-28 09:22:18,148:INFO:Initializing create_model()
+2020-11-28 09:22:18,148:INFO:create_model(estimator=<catboost.core.CatBoostClassifier object at 0x7f891f3fc760>, fold=StratifiedKFold(n_splits=10, random_state=123, shuffle=False), round=4, cross_validation=True, predict=True, fit_kwargs={}, groups=None, refit=True, verbose=True, system=False, metrics=None, display=<pycaret.internal.Display.Display object at 0x7f89f01d2ee0>, kwargs={'random_strength': 0.4, 'n_estimators': 250, 'l2_leaf_reg': 100, 'depth': 7})
+2020-11-28 09:22:18,148:INFO:Checking exceptions
+2020-11-28 09:22:18,148:INFO:Importing libraries
+2020-11-28 09:22:18,148:INFO:Copying training dataset
+2020-11-28 09:22:18,154:INFO:Defining folds
+2020-11-28 09:22:18,154:INFO:Declaring metric variables
+2020-11-28 09:22:18,168:INFO:Importing untrained model
+2020-11-28 09:22:18,168:INFO:Declaring custom model
+2020-11-28 09:22:18,181:INFO:CatBoost Classifier Imported succesfully
+2020-11-28 09:22:18,207:INFO:Starting cross validation
+2020-11-28 09:22:18,208:INFO:Cross validating with StratifiedKFold(n_splits=10, random_state=123, shuffle=False), n_jobs=-1
+2020-11-28 09:23:24,956:INFO:Calculating mean and std
+2020-11-28 09:23:24,957:INFO:Creating metrics dataframe
+2020-11-28 09:23:24,976:INFO:Finalizing model
+2020-11-28 09:23:31,237:INFO:Uploading results into container
+2020-11-28 09:23:31,237:INFO:Uploading model into container now
+2020-11-28 09:23:31,237:INFO:create_model_container: 2
+2020-11-28 09:23:31,238:INFO:master_model_container: 2
+2020-11-28 09:23:31,238:INFO:display_container: 2
+2020-11-28 09:23:31,238:INFO:<catboost.core.CatBoostClassifier object at 0x7f891f3fcd30>
+2020-11-28 09:23:31,238:INFO:create_model() succesfully completed......................................
+2020-11-28 09:23:31,342:INFO:SubProcess create_model() end ==================================
+2020-11-28 09:23:31,373:INFO:create_model_container: 2
+2020-11-28 09:23:31,373:INFO:master_model_container: 2
+2020-11-28 09:23:31,373:INFO:display_container: 2
+2020-11-28 09:23:31,373:INFO:<catboost.core.CatBoostClassifier object at 0x7f891f3fcd30>
+2020-11-28 09:23:31,373:INFO:tune_model() succesfully completed......................................
+2020-11-28 09:23:31,474:INFO:Initializing plot_model()
+2020-11-28 09:23:31,474:INFO:plot_model(plot=confusion_matrix, fold=None, use_train_data=False, verbose=True, display=None, estimator=<catboost.core.CatBoostClassifier object at 0x7f891f3fcd30>, feature_name=None, fit_kwargs=None, groups=None, label=False, save=False, scale=1, system=True)
+2020-11-28 09:23:31,474:INFO:Checking exceptions
+2020-11-28 09:23:31,476:INFO:Preparing display monitor
+2020-11-28 09:23:31,481:INFO:Preloading libraries
+2020-11-28 09:23:31,482:INFO:Copying training dataset
+2020-11-28 09:23:31,486:INFO:Copying test dataset
+2020-11-28 09:23:31,487:INFO:Plot type: confusion_matrix
+2020-11-28 09:23:31,522:INFO:Fitting Model
+2020-11-28 09:23:31,525:INFO:Scoring test/hold-out set
+2020-11-28 09:23:31,669:INFO:Visual Rendered Successfully
+2020-11-28 09:23:31,766:INFO:plot_model() succesfully completed......................................
